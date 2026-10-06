@@ -1,5 +1,6 @@
 # Python bytecode and test/tool caches
 __pycache__/
+*.pyc
 *.py[cod]
 .pytest_cache/
 .mypy_cache/
@@ -22,6 +23,7 @@ dist/
 notes/env-*.txt
 
 # Model weights and runtime/compiler caches
+results/
 models/
 checkpoints/
 .cache/

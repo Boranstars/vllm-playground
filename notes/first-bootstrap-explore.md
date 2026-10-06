@@ -156,4 +156,30 @@ Serving
 ```
 
 ## 实验
-1.同一套 workload，只因为 cache state 不同，TTFT 就能从几百毫秒变到十几毫秒，而 Decode 性能却不会因此完全恢复？
+1. 同一套 workload，只因为 cache state 不同，TTFT 就能从几百毫秒变到十几毫秒，而 Decode 性能却不会因此完全恢复？
+2. 验证
+```text
+                  LLM request latency
+
+                ┌──── Prefill ────┐
+request ────────┤                 ├─ first token
+                └─────────────────┘
+                        │
+                       TTFT
+                                         
+first token ─ Decode ─ Decode ─ Decode ─ ... ─ done
+              │         │         │
+             TPOT      TPOT      TPOT
+
+Prompt length ↑
+→ Prefill ↑
+→ TTFT ↑↑
+
+Output length ↑
+→ Decode steps ↑
+→ E2E ↑↑
+
+Context length ↑
+→ 每个 Decode step 也稍变贵
+→ TPOT ↑（较缓）
+```
