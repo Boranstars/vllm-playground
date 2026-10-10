@@ -1,7 +1,7 @@
 # Concurrency experiment 1: homogeneous closed-loop sweep
 
-**Status:** Protocol and implementation; no results yet. Conceptual notes belong in
-`concurrency-schedule.md`; completed observations and conclusions belong in
+**Status:** Protocol and implementation, with post-hoc diagnostic plots.
+Conceptual notes belong in `concurrency-schedule.md`; completed observations and conclusions belong in
 `week1-experiments.md` only after a real run.
 
 **Question:** Under a fixed homogeneous workload, how does increasing client
@@ -169,10 +169,31 @@ uv run --no-sync python experiments/plot_concurrency.py results/concurrency-<run
 The launch script uses the existing uv environment without synchronization,
 preserving the manually installed vLLM/OpenAI packages. Tiny runs still include
 three global warmups, 2*C per-level warmup completions, and boundary/drain work.
-Plot exactly generation throughput, TTFT p50/p95, and E2E p50/p95 versus discrete
-tested concurrency levels, saving three PNGs beside the levels CSV. Review raw
-token distributions, cache hits, finish reasons, and state summaries before
-interpreting the knee. Record actual conclusions only after running the experiment.
+The plotter reads only the existing levels CSV and saves six separate PNGs beside
+it, using the tested concurrency levels as discrete sweep points.
+
+**Primary plots (specified before the experiment):**
+
+1. Generation throughput versus concurrency: `-throughput.png`.
+2. TTFT p50/p95 versus concurrency, in seconds: `-ttft.png`.
+3. E2E p50/p95 versus concurrency, in seconds: `-e2e.png`.
+
+**Post-hoc diagnostic / learning plots (added after reviewing the existing run):**
+
+4. TPOT p50/p95 versus concurrency, converted from seconds/token to ms/token:
+   `-tpot.png`.
+5. KV-cache usage mean/peak versus concurrency, converted from the raw fraction
+   to percent of the vLLM KV block pool: `-kv-usage.png`. This is not total VRAM use.
+6. Running requests mean/peak versus concurrency, with a dashed `y = concurrency`
+   reference line: `-running.png`. The reference compares observed engine Running
+   against client concurrency; Running is not GPU batch size.
+
+Diagnostic plots reuse the already recorded latency percentiles and Gauge
+mean/peak statistics. They add no measurements, change no CSV values or protocol
+boundaries, and require no new inference sweep. Waiting and preemption remain in
+the CSV/summary, without separate plots. Review raw token distributions, cache
+hits, finish reasons, and state summaries before interpreting the knee. Record
+actual conclusions only after running the experiment.
 
 ## Exact CSV schemas
 

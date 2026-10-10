@@ -91,3 +91,26 @@ time ─────────────────────────
                            │
                                         idle
 ```
+
+4. 如何理解实验？
+```text
+Load
+我加了多少压力？
+→ concurrency / Running
+
+Capacity
+系统多做了多少活？
+→ aggregate throughput
+
+Cost
+用户体验付出多少代价？
+→ TTFT / TPOT / E2E
+
+Bottleneck
+为什么开始不划算？
+→ throughput flattening
+   Waiting
+   KV
+   preemption
+   GPU profiling
+```
