@@ -1,5 +1,9 @@
 # Week 1 experiments
 
+Selected result figures are preserved in `pics/` with descriptive names and embedded
+below. Each section identifies its source run; original CSV/PNG outputs remain in
+gitignored `results/`. These copies let the notes retain their figures in Git.
+
 ## Prompt length
 
 **Question:** How does prompt/context length affect TTFT and decode performance?
@@ -10,9 +14,17 @@
 
 **Method:** Five repetitions per size, randomized order, unique per-request prefix, one uncounted warmup; medians reduce sensitivity to individual outliers.
 
-**Observed in the latest clean run:** Median actual prompt lengths were approximately 77, 178, 588, 1130, and 2230 tokens. Median TTFT was 14, 15, 34, 62, and 133 ms. Median decode throughput was 161.356, 159.907, 153.606, 143.946, and 137.298 tokens/s.
+**Illustrated run:** `20261006-222435`, from `results/prompt_length-20261006-222435.csv`. This is the only archived prompt-length run available in `results/`: all five sizes have five complete samples, with 64 output tokens and finish reason `length` throughout. The summary below uses this CSV so its numbers and figures refer to the same run.
+
+**Observed in the illustrated run:** Median actual prompt lengths were approximately 77, 180, 588, 1135, and 2229 tokens. Median TTFT was 11.8, 14.6, 31.4, 55.3, and 120.4 ms. Median decode throughput was 172.182, 171.345, 167.733, 159.760, and 140.928 tokens/s.
 
 **Interpretation:** Longer prompts add Prefill work and strongly increase TTFT. Decode also slows somewhat because each new query attends over more historical KV. In this workload, TTFT is much more sensitive to prompt length than TPOT.
+
+**Figures:** Raw samples and group medians from the illustrated run.
+
+![Prompt length versus TTFT: raw samples and group medians](pics/prompt-length-vs-ttft.png)
+
+![Prompt length versus TPOT: raw samples and group medians](pics/prompt-length-vs-tpot.png)
 
 **Caveats:** These are client-observed measurements over localhost, on one RTX 4060 Laptop GPU, with the small Qwen3-0.6B model. This is an educational experiment, not a hardware benchmark score.
 
@@ -21,13 +33,15 @@
 **Question:** How does output length affect E2E latency and Decode performance when prompt workload is approximately fixed?
 
 **Controlled:**
+
 - model = Qwen/Qwen3-0.6B
 - concurrency = 1
-- prompt ≈ 512 tokens
+- fixed prompt body; actual prompt ≈ 577 tokens
 
 **Variable:** Output length / max_tokens.
 
 **Method:**
+
 - 5 repetitions
 - randomized order
 - unique early request prefix
@@ -35,9 +49,17 @@
 - one uncounted warmup
 - medians
 
-**Results:** Tested output limits of 16, 64, 128, 256, and 512 tokens. Actual prompt lengths stayed clustered around 575–580 tokens. TTFT remained approximately constant. E2E latency increased approximately linearly with generated length. Client-observed TPOT was generally around 6–6.5 ms/token, with raw outliers—especially for shorter outputs—across repeated runs.
+**Illustrated run:** `20261006-225619`, from `results/output_length-20261006-225619.csv`. Three archived output-length runs were checked; all have five complete samples at each of the five output limits and finish reason `length` throughout. The latest complete run is used for both figures, retaining all 25 samples rather than selecting individual points or combining runs.
+
+**Results:** Tested output limits of 16, 64, 128, 256, and 512 tokens; actual outputs reached each limit. In the illustrated run, actual prompt lengths stayed clustered around 574–581 tokens. TTFT medians remained approximately constant at 32.5–34.7 ms. E2E latency increased approximately linearly with generated length. Client-observed TPOT medians were approximately 6.3–6.6 ms/token, with visible raw variation. The earlier runs also show variation and occasional outliers, particularly for shorter outputs.
 
 **Interpretation:** Longer outputs mainly add Decode steps and increase total E2E latency. Current data does not support a strong monotonic increase in TPOT with output length.
+
+**Figures:** Raw samples and group medians from the illustrated run.
+
+![Output length versus end-to-end latency: raw samples and group medians](pics/output-length-vs-e2e.png)
+
+![Output length versus TPOT: raw samples and group medians](pics/output-length-vs-tpot.png)
 
 **Caveats:** Client-observed measurements over localhost with Qwen/Qwen3-0.6B on a single RTX 4060 Laptop GPU.
 
@@ -87,5 +109,23 @@ The sole sampled Waiting=1 observation occurred at C=16 with reason `capacity`; 
 The 16–32 range is a candidate region of diminishing returns under this workload, not a proven exact saturation point: throughput still increased at C=32. Running and KV usage increased, but sampled Waiting showed no sustained backlog and no preemption was recorded. The data does not establish KV-capacity exhaustion or identify a specific GPU bottleneck. E2E p95 generally remained close to p50, suggesting broad request slowdown rather than a pronounced extreme tail in this run.
 
 **Plots:** Generation throughput, TTFT p50/p95, and E2E p50/p95 are the original primary plots. TPOT p50/p95, KV usage mean/peak, and Running mean/peak with a client-concurrency reference line were added post hoc as diagnostic / learning plots, using the same recorded levels CSV without new inference or independent evidence.
+
+All six figures below use the formal run `20261010-231439-7f9be14b` identified above.
+
+**Primary plots:**
+
+![Concurrency versus aggregate generation throughput](pics/concurrency-vs-generation-throughput.png)
+
+![Concurrency versus TTFT p50 and p95](pics/concurrency-vs-ttft.png)
+
+![Concurrency versus end-to-end latency p50 and p95](pics/concurrency-vs-e2e.png)
+
+**Post-hoc diagnostic / learning plots:**
+
+![Concurrency versus TPOT p50 and p95](pics/concurrency-vs-tpot.png)
+
+![Concurrency versus KV block-pool usage mean and peak](pics/concurrency-vs-kv-usage.png)
+
+![Concurrency versus Running requests mean and peak, with client concurrency reference](pics/concurrency-vs-running.png)
 
 **Caveats:** One ascending sweep on one machine, with no repeated runs or confidence intervals. GPU temperature, frequency, power, and background activity were not strictly controlled; no formal GPU profiling was collected. Measurement windows ranged from about 104 s at C=1 to 14.5 s at C=32. The 128 requests share runtime/scheduling conditions and are not 128 independent replications. Gauge sampling can miss brief waits/peaks, and snapshot timing/exporter refresh introduce boundary uncertainty. Fixed-concurrency closed-loop traffic does not establish behavior under a fixed external arrival rate. Findings apply to this model, workload, baseline configuration, and hardware.
