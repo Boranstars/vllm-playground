@@ -129,3 +129,61 @@ All six figures below use the formal run `20261010-231439-7f9be14b` identified a
 ![Concurrency versus Running requests mean and peak, with client concurrency reference](pics/concurrency-vs-running.png)
 
 **Caveats:** One ascending sweep on one machine, with no repeated runs or confidence intervals. GPU temperature, frequency, power, and background activity were not strictly controlled; no formal GPU profiling was collected. Measurement windows ranged from about 104 s at C=1 to 14.5 s at C=32. The 128 requests share runtime/scheduling conditions and are not 128 independent replications. Gauge sampling can miss brief waits/peaks, and snapshot timing/exporter refresh introduce boundary uncertainty. Fixed-concurrency closed-loop traffic does not establish behavior under a fixed external arrival rate. Findings apply to this model, workload, baseline configuration, and hardware.
+
+## Mixed Prefill–Decode interference
+
+**Question:** When a fixed cohort is already decoding, does injecting a new Prefill workload produce a temporary, client-observed output stall? How does the response change between a small prompt and a prompt exceeding one scheduler token budget?
+
+**Controlled:**
+
+- Fedora, Python 3.12, vLLM 0.31.0, one RTX 4060 Laptop GPU (~8 GB VRAM).
+- Qwen/Qwen3-0.6B, `--gpu-memory-utilization 0.75`, `--max-model-len 4096`; the serving script and scheduler settings were unchanged.
+- Baseline configuration: Chunked Prefill enabled, scheduler token budget 2048, max sequences 256, FCFS, AsyncScheduler, Prefix Cache enabled.
+- Eight background requests submitted once per trial, without replacement. Each used the output-length/concurrency prompt material with a unique UUID prefix, approximately 577 actual prompt tokens, `temperature=0`, and `max_tokens=512`.
+- Foreground requests used `temperature=0`, `max_tokens=1`, and a new early UUID prefix, limiting sustained extra Decode contention after Prefill.
+
+**Variable:** Baseline = no foreground; Short = one foreground prompt targeting approximately 577 tokens; Long = one foreground prompt targeting approximately 3072 tokens, with actual usage required to exceed 2048.
+
+**Method:** One excluded warmup cohort with C=8 and output limit 64. Each recorded trial waited until all eight background streams had accumulated at least 64 generated token IDs, then recorded the trigger and each request's actual progress. Baseline used that trigger as its alignment time. Short/Long aligned to the client timestamp immediately before the foreground API call. All requests completed before engine idle was checked and the next trial began.
+
+The formal schedule contained 10 blocks, each with exactly one Baseline, Short, and Long trial in a seeded random order (`seed=20261011`), for 30 trials total. Blocks spread each condition throughout the run to reduce systematic thermal/time drift. See [the experiment protocol](prefill-interference-experiment.md).
+
+Every parsed streaming event was recorded in memory with a client monotonic timestamp and incremental `token_ids`; final usage validated both prompt counts and total generated IDs. A token-bearing event can contain multiple tokens. The primary observable is therefore **client-observed token-bearing event gap**, not GPU-side per-token Decode latency. This experiment did not use average TPOT as its primary metric.
+
+For each background request, gap = the difference between successive token-bearing event receipt times. The later event determines window membership: pre `[-0.5,0)` s and post `[0,+0.5]` s. Each request's stall ratio = post maximum gap / pre median gap; each trial's ratio = the median of its eight request ratios. Both windows required at least two gaps per request. The pre-gap and post-peak columns below are condition medians of trial-level summaries, each itself the median across eight request values; the reported stall ratio is not their quotient.
+
+**Run:** `20261011-213351-40137cab`, 2026-10-11, local time Asia/Shanghai. Sources: `results/prefill-interference-20261011-213351-40137cab-{events.jsonl,trials.csv,metrics.csv,analysis.csv}`. The earlier three-trial smoke run `20261011-211120-78a1b24d` checked integration and is excluded from these findings. All figures below use the formal run, with timeline improvements generated offline from its unchanged raw events.
+
+**Results:** All 30 trials completed successfully and passed analysis validity, with 10 trials per condition. Each background reached the trigger exactly once; recorded progress ranged from 64 to 66 tokens. All 240 backgrounds generated 512 tokens: 239 finished with `length`, one with `stop`. All 20 foregrounds generated one token and finished with `length`. Background actual prompt lengths ranged from 572 to 581 tokens. Short foregrounds ranged from 575 to 580; Long foregrounds ranged from 3068 to 3074, all above the 2048-token scheduler budget.
+
+Raw-event replay validated the generated-ID/usage match and event cumulative counts for all 260 recorded requests; prompt-ID counts also matched usage. Backgrounds produced 122,880 token-bearing events, all singleton in this run: 1-token events 100%, 2-token and >=3-token events 0%, maximum delta=1. Including foregrounds gives 122,900 token-bearing events, within 123,420 total parsed SSE events. This observation does not guarantee singleton delivery in future runs; multi-token handling was tested synthetically.
+
+| Condition | Trials | Pre median gap (ms) | Post peak gap summary (ms) | Trial stall ratio median (min–max) | Foreground TTFT median (min–max, ms) |
+|---|---:|---:|---:|---:|---:|
+| Baseline | 10 | 8.509 | 11.045 | 1.297 (1.218–1.638) | — |
+| Short | 10 | 8.513 | 32.657 | 3.834 (3.635–4.002) | 50.517 (48.805–52.119) |
+| Long | 10 | 8.511 | 107.704 | 12.576 (10.192–12.897) | 199.691 (198.423–234.192) |
+
+All trials had zero local-cache-hit tokens, external KV-transfer tokens, and preemptions. Across the run, logical prompt tokens equalled local-compute tokens at 174,971; generation tokens totalled 122,900. Engine Gauges were sampled approximately every 0.2 s, with 849 samples total. Running peaks for Baseline/Short/Long were 8/8/9, Waiting/capacity/deferred stayed zero, and the largest sampled KV block-pool fraction was 23.55%. Every trial's final idle observation had Running=Waiting=KV usage=0. Short's brief extra request can escape 0.2 s sampling; its sampled Running peak of 8 does not imply the foreground was absent.
+
+**Interpretation:** Within this run, both injected workloads coincided with larger transient background stream gaps than the no-injection control, with Long producing larger gaps than Short. Background intervals returned to their usual short cadence after the injection region; the effect is localized rather than summarized only by whole-request average TPOT.
+
+For the post-hoc stall-only diagnostic, each request used its own pre median and a strict threshold `gap > 2 × pre_median_gap`. Actual thresholds ranged from 16.82 to 21.39 ms. No Baseline request exceeded its threshold within the plotted `[-0.5,+1.0]` s window. Every Short background had one post-alignment interval exceeding its threshold, and every Long background had two. Short trial B8/T22 additionally had a pre-alignment anomaly shared across all eight requests; it is retained rather than attributed to the later injection. The multiple Long intervals are consistent with a Prefill workload spanning token-budget iterations, but client events do not identify GPU scheduler iteration boundaries.
+
+**Plots:** The full-interval timeline preserves every observed gap as `[previous event receipt, next event receipt]`, with separate Baseline/Short/Long panels, one row per trial, and eight background tracks per row. B denotes randomized block (1–10), T denotes overall execution order (1–30). Length and color encode the complete gap duration, and ticks mark actual event receipts. There is no temporal binning, smoothing, or cross-trial aggregation; adjacent normal gaps can visually join into a continuous track.
+
+The stall-only timeline was added post hoc for readability, using the per-request 2× threshold above and the same true interval endpoints. Its threshold is a visualization rule, not a statistical significance test or a universal definition of stall. The stall-ratio and foreground-TTFT plots retain one point per trial plus condition medians. All four figures are derived from the same formal run; no additional inference was needed to produce the revised timelines.
+
+**Primary views:**
+
+![Mixed Prefill–Decode interference: client-observed full event-gap intervals for all trials and backgrounds](pics/prefill-interference-full-interval-timeline.png)
+
+![Mixed Prefill–Decode interference: trial stall ratios with condition medians](pics/prefill-interference-stall-ratio.png)
+
+![Mixed Prefill–Decode interference: Short and Long foreground TTFT per trial](pics/prefill-interference-foreground-ttft.png)
+
+**Post-hoc diagnostic / learning view:**
+
+![Mixed Prefill–Decode interference: only event-gap intervals greater than twice each request's pre median](pics/prefill-interference-stall-only-timeline.png)
+
+**Caveats:** One 30-trial run on one machine. Blocks reduce condition/order confounding but do not strictly control temperature, GPU clocks, power, or background activity. Eight streams within a trial share serving conditions and are not eight independent experiment replications. Client receipt times also include HTTP/SDK/event-loop/OS effects; even singleton events do not expose GPU generation timestamps. Foreground request-start alignment is not the GPU Prefill start. Gauge sampling cannot resolve these short pauses, and a gap crossing a window boundary is assigned by its later event. Chunked Prefill was enabled throughout: there is no on/off control, so these results cannot establish a causal TPOT improvement from Chunked Prefill, exact GPU stall durations, or the scheduler cause of each observed gap.
