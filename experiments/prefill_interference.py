@@ -56,11 +56,15 @@ TRIAL_COLUMNS = [
 ]
 
 
-def make_schedule(blocks, seed):
+def make_schedule(blocks, seed, conditions=CONDITIONS):
+    if blocks < 1 or not conditions or len(set(conditions)) != len(conditions):
+        raise ValueError("Expected positive blocks and distinct conditions")
+    if any(condition not in CONDITIONS for condition in conditions):
+        raise ValueError("Unknown condition")
     rng = random.Random(seed)
     schedule = []
     for block in range(1, blocks + 1):
-        order = list(CONDITIONS)
+        order = list(conditions)
         rng.shuffle(order)
         schedule.extend((block, condition) for condition in order)
     return schedule
@@ -144,7 +148,7 @@ def validate_request(request):
         raise ValueError("Actual prompt token count missing")
     if request.target_prompt_tokens == 3072:
         if prompt <= 2048:
-            raise ValueError(f"Invalid Long: actual prompt {prompt} <= scheduler budget 2048")
+            raise ValueError(f"Invalid Long: actual prompt {prompt} <= 2048-token lower bound")
         if not 3000 <= prompt <= 3200:
             raise ValueError(f"Long actual prompt {prompt} outside target range 3000–3200")
     elif not 550 <= prompt <= 600:
@@ -370,7 +374,14 @@ async def warmup(client, http_client):
             for request in requests:
                 group.create_task(stream_request(client, request))
     finally:
-        await wait_for_idle(http_client, before=before, requests=requests)
+        after = await wait_for_idle(http_client, before=before, requests=requests)
+    return {
+        "completion_tokens": [r.completion_tokens for r in requests],
+        "all_valid": all(r.valid for r in requests),
+        "counter_deltas": {k: after["counters"][k] - v for k, v in before["counters"].items()},
+        "event_distribution": event_distribution([e for r in requests for e in r.events]),
+        "idle_gauges": after["gauges"],
+    }
 
 
 def write_trial(row, events, metrics, trial_writer, event_file, metric_writer):
