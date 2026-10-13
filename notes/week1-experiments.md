@@ -272,3 +272,77 @@ The timeline repeatedly shows three adjacent abnormal intervals at 1024, two at 
 ![Baseline: no above-threshold intervals in the displayed alignment-relative window](pics/token-budget-baseline-stall-only-timeline.png)
 
 **Caveats:** One server block per budget, so budget remains confounded with block time despite the non-monotonic order. Recorded GPU temperatures at block starts were 61/70/73°C; clock, power and desktop activity were not strictly controlled. Startup profiling produced different KV capacities; pool usage stayed below 26% with sampled Waiting/preemption = 0, so no activation of capacity pressure was observed. Waiting = 0 does not mean no resource competition, and preemption = 0 does not mean no execution pressure. Approximately 200 ms gauge sampling can miss brief changes. UUID tokenization introduces small prompt-length variation; HTTP/SDK/event-loop/OS timing and async execution affect receipt gaps. Eight backgrounds share conditions within each trial and are not independent experiment replications. There is no scheduler iteration trace or Chunked Prefill on/off control. Startup dependency warnings and EngineCore/semaphore messages during shutdown are preserved in logs; all measurement validation, drain and owned-process/port-release checks passed. These observations describe this model/workload/hardware, not GPU-level stall durations or a general optimization proof.
+
+## KV pressure / admission / preemption
+
+**Question:** In a fixed KV block pool, can insufficient headroom keep a new WAITING request from entering RUNNING until capacity is released? Can requests admitted with short prompts later trigger preemption as their Decode contexts grow?
+
+**Controlled:**
+
+- Fedora, Python 3.12, vLLM 0.31.0, one RTX 4060 Laptop GPU (~8 GB VRAM).
+- Qwen/Qwen3-0.6B, GPU memory utilization 0.75, maximum model length 4096, scheduler token budget 2048, maximum sequences 256, FCFS, async scheduling.
+- Prefix Cache and Chunked Prefill enabled, `scheduler_reserve_full_isl=True`, watermark 0; no KV transfer or offloading configured.
+- Streaming over localhost, `temperature=0`, `ignore_eos=True`; every prompt had an independent early nonce and was counted with the server's `/tokenize` endpoint before sending.
+- One fresh formal server for all trials. Each trial began and ended with Running=Waiting=0 and idle KV usage. Server configuration was not an experimental variable.
+
+**Variable:** Two paired probes. Admission changed only the order of foreground injection and designated-holder cancellation: `BLOCKED_THEN_RELEASE` versus `RELEASE_THEN_INJECT`. Growth kept concurrency and prompt shape fixed, changing only the future output limit: `CONTROL_GROWTH` versus `PRESSURE_GROWTH`.
+
+**Method:** A separate calibration server verified cancellation and all four conditions, then shut down before the fresh formal server started. Each probe used three randomized paired blocks, six trials per probe and twelve formal trials total. Base seed was 20261013; growth order used base seed + 1. See [the experiment protocol](kv-pressure-experiment.md).
+
+Fresh startup logs and `cache_config_info` agreed on **2311 GPU blocks × 16 tokens = 36,976 KV tokens**. The null block leaves 2310 usable blocks / 36,960 tokens. Estimated free blocks = `(1 − kv_cache_usage_perc) × (num_gpu_blocks − 1)`; the block-level margin was 24. Capacity and workload lengths were recalculated from this server, rather than copied from historical capacity estimates.
+
+Admission used nine holders with exactly 80 input tokens and output limit 3984, safely below the 4096 context limit. Foreground input was exactly 3104 tokens, requiring 194 blocks, with output limit one. Both conditions first reached the same high-pressure window: all holders RUNNING, Waiting=0, no preemption, free blocks < 194−24, and estimated free blocks plus the designated holder's blocks > 194+24. All six formal triggers had **168 free blocks**, at sampled KV usage 92.73%.
+
+`BLOCKED_THEN_RELEASE` injected the foreground, required at least three consecutive waiting scrapes spanning ≥100 ms with no foreground token or preemption, then closed the designated holder stream. `RELEASE_THEN_INJECT` closed the holder first and confirmed sufficient free blocks before sending the foreground. A1 release-headroom checks allowed for foreground blocks already allocated before the next scrape. Cancellation evidence combined client stream closure, server Running/KV recovery and idle drain; `request_success{abort}` was recorded but not required to increment, because the audited disconnect path removes output state before finished-request statistics.
+
+Growth burst-started twelve 80-token requests and confirmed Running=12, Waiting=0 and zero preemption before further observation. Capacity-derived control context was 2144 tokens per request (2064 output; aggregate 25,728 tokens, approximately 69.58% of reported capacity). Pressure context was 3392 (3312 output; aggregate 40,704 tokens, approximately 110.08%). Control requests completed normally. Pressure trials continued for one second after the first observed preemption counter increment, then cancelled the remaining streams and drained.
+
+Gauges and counters were polled every approximately 50 ms; observed median sample intervals were 50.55–50.68 ms, with median scrape latency 3.58–5.33 ms. Counter comparisons used per-trial before/after deltas. The existing SSE parser and token-ID event recorder preserved every parsed event's timestamp and delta token count, including multi-token events. Completed streams were checked against final prompt/output usage and `length` finish reason; cancelled streams intentionally had no final usage.
+
+**Run:** `formal-20261013`, 2026-10-13, local time Asia/Shanghai. Sources: `results/kv-pressure/formal-20261013/{manifest.json,metadata.json,trials.jsonl,trials.csv,metrics.csv,events.jsonl,analysis.csv,raw-validation.json,report.md}` and `plots/`; these generated files remain gitignored. Calibration `smoke-20261013-c` passed four trials plus cancellation validation. Two earlier attempts stopped for missing scheduler telemetry and an invalid client-side abort-counter assertion; their records are preserved and excluded from formal findings. No workload adjustment was needed.
+
+**Results:** All twelve formal trials passed protocol validation and raw-event replay, covering 132 requests and 384,316 parsed SSE events. There were 384,142 token-bearing events, including 147 multi-token events. All completed responses reached their exact output limits and finished with `length`. Formal prefix-cache hits and external KV-transfer deltas were zero throughout; no unexpected EOS, request errors or OOM occurred. Every trial drained to idle.
+
+| Pair | Admission condition | Pre-release free / FG required blocks | Observed Waiting span (ms) | Client send→release (ms) | Release→first token (ms) | FG TTFT (ms) |
+|---:|---|---:|---:|---:|---:|---:|
+| 1 | BLOCKED_THEN_RELEASE | 168 / 194 | 101.4 | 203.4 | 268.9 | 472.3 |
+| 1 | RELEASE_THEN_INJECT | 168 / 194 | 0 | — | 314.2 | 264.3 |
+| 2 | BLOCKED_THEN_RELEASE | 168 / 194 | 151.2 | 260.0 | 281.5 | 541.5 |
+| 2 | RELEASE_THEN_INJECT | 168 / 194 | 0 | — | 321.8 | 273.3 |
+| 3 | BLOCKED_THEN_RELEASE | 168 / 194 | 149.6 | 254.3 | 270.4 | 524.7 |
+| 3 | RELEASE_THEN_INJECT | 168 / 194 | 0 | — | 346.0 | 292.7 |
+
+All admission preemption deltas were zero. A1's client send→release interval describes a tokenless client-observed interval, not an exact scheduler waiting duration; the observed Waiting span covers consecutive metric samples. A2 released before injection, so its release→first-token delay also includes approximately 49–53 ms spent confirming headroom. Its post-release free-block estimate was 406 in every pair, above the 218-block requirement including margin, and no sustained foreground Waiting plateau appeared.
+
+| Pair | Growth condition | Peak sampled KV (%) | Preemption delta | First counter increment observed after cohort send (s) | Running / Waiting at observation |
+|---:|---|---:|---:|---:|---:|
+| 1 | CONTROL_GROWTH | 69.61 | 0 | — | — |
+| 1 | PRESSURE_GROWTH | 99.74 | 1 | 50.856 | 11 / 1 |
+| 2 | CONTROL_GROWTH | 69.61 | 0 | — | — |
+| 2 | PRESSURE_GROWTH | 99.78 | 1 | 49.340 | 11 / 1 |
+| 3 | CONTROL_GROWTH | 69.61 | 0 | — | — |
+| 3 | PRESSURE_GROWTH | 99.78 | 1 | 49.354 | 11 / 1 |
+
+All growth cohorts initially ran with twelve requests and no waiting or preemption. Controls completed all twelve requests without preemption or subsequent Waiting. Each pressure trial naturally increased the counter by one near pool exhaustion and showed Running=11, Waiting=1 at the first observed increment. Observing Waiting is supporting aggregate evidence; it is not a validity requirement, since a preempted request could recover between scrapes in another run.
+
+**Interpretation:** The admission pairs support the causal sequence **insufficient headroom → foreground waits → holder release restores capacity → foreground produces its first token**. Both conditions began at the same occupancy, and holders were already decoding, with sequence count far below the 256-request limit. The reversed release/injection order removed the sustained Waiting plateau. This joint evidence is consistent with the audited full-known-input admission check; the `capacity` waiting label alone does not identify a KV allocation failure.
+
+The growth pairs support **initial admission of short prompts → retained context grows → natural preemption near KV exhaustion**. Their future allowed demand differs despite identical initial prompt lengths and concurrency. This is consistent with admission checking currently known tokens, without reserving all future `max_tokens`, followed by RUNNING requests acquiring new blocks as Decode grows. The data directly observes metrics and client progress, not the return value of `allocate_slots()`, a particular victim's identity, recomputation, or an exact allocation-failure timestamp. Block ownership/refcount management within the fixed pool and the absence of ordinary CPU swap are source/configuration facts, not GPU memory-allocation traces from this experiment.
+
+**Plots:** The admission figures show all three pairs, aligned to foreground send, with KV usage, Running and Waiting panels and client send/release/first-token markers. Cohort cleanup is marked separately. The growth comparison shows all three pairs with KV usage, counter delta and request counts. These are the three primary views of the formal run.
+
+**Primary views:**
+
+![KV admission: foreground waits, one holder is released, then the foreground produces its first token](pics/kv-pressure-blocked-then-release.png)
+
+![KV admission control: release a holder and verify headroom before injecting the foreground](pics/kv-pressure-release-then-inject.png)
+
+![KV growth: all three control and pressure pairs, with preemption counter and Running/Waiting observations](pics/kv-pressure-growth-comparison.png)
+
+**Post-hoc teaching view:** Pair 1 / pressure trial 7 was selected to explain the first preemption. This figure was generated offline from the same raw scrapes, without new inference. It uses four panels with a shared `[-1.75,+1.75]` s axis around the first observed counter increment, corresponding to 49.106–52.606 s after cohort send. The adjacent scrapes, 51.9 ms apart, changed KV **99.740%→91.905%**, preemption **0→1**, Running **12→11**, and Waiting **0→1**. The dashed line is the first Prometheus observation, not the exact scheduler event time. Waiting has its own 0–1.25 scale. Client cancellation began at +1.004 s; later samples are excluded and that region is shaded so cleanup's return to zero is not presented as part of preemption. This representative zoom explains the transition; replication evidence remains in the all-pair comparison above.
+
+![First observed preemption, Pair 1 trial 7: four separate panels show KV release, counter increment, and Running to Waiting transition](pics/kv-pressure-preemption-zoom.png)
+
+**Validation:** 37 unit tests passed, including eleven new tests for pool/block arithmetic, safety conditions, growth targets, counter reset handling, validity rules, cancellation, multi-token events and seeded schedules. Calibration, formal protocol checks, raw replay and owned-process/port cleanup all passed. No vLLM source or dependency changes, cache reset, or GPU profiling were used. Maintained scripts are `experiments/kv_pressure_experiment.py` and `experiments/plot_kv_pressure.py`; `results/.../source/` contains archival snapshots. The zoom-only entry point is `experiments/plot_kv_pressure.py <run-directory> --preemption-zoom-only --pair 1` and preserves the primary plots.
+
+**Caveats:** Three pairs per probe on one small model and one laptop GPU establish mechanism-consistent behavior for this workload, not general performance estimates or an optimal configuration. Prometheus sampling/export may lag scheduler actions or miss transient maxima; client timestamps include HTTP, SDK and event-loop timing. The first counter observation cannot identify the exact preemption or allocation-failure time. Cancelled streams cannot provide final server usage. Disconnect aborts did not increment the success/abort counter, so cancellation was verified with stream closure and resource recovery. GPU temperature, clocks, power and desktop activity were not strictly controlled. Startup logged an existing Numba/NumPy compatibility warning; an EngineDeadError appeared only during requested shutdown, with zero server ERROR lines during formal measurement. Formal used API-first SIGINT and a 30 s shutdown grace period, the sole lifecycle change from calibration; it exited 0 without force kill and released all owned processes and port 8000. Original raw data and plots remain preserved in the ignored results directory.
