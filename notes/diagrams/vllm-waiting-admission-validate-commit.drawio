@@ -1,0 +1,195 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="drawio" version="30.3.14">
+  <diagram id="cp4-waiting-admission" name="Checkpoint 4 · WAITING Admission">
+    <mxGraphModel dx="1800" dy="2200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="2200" background="#FFFFFF" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" value="CP4 · WAITING 请求的 Admission" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=34;fontColor=#0F172A;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="30" width="1680" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="validate first, commit on success  |  Qwen3-0.6B · 纯文本普通请求" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#64748B;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="60" y="100" width="1680" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="4" value="&lt;div style=&quot;text-align:center;line-height:1.15&quot;&gt;&lt;span style=&quot;font-size:25px;font-weight:bold&quot;&gt;Admission 不是单纯 status = RUNNING，而是资源验证成功后的一次 commit。&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;fillColor=#F5F5F5;strokeColor=#94A3B8;strokeWidth=1.6;fontFamily=Noto Sans CJK SC;fontColor=#0F172A;" vertex="1" parent="1">
+          <mxGeometry x="60" y="160" width="1680" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="5" value="" style="group;container=1;pointerEvents=0;" vertex="1" parent="1">
+          <mxGeometry x="60" y="260" width="1680" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="6" value="" style="rounded=0;html=1;fillColor=#EDF4FC;strokeColor=#A7BDDA;" vertex="1" parent="5">
+          <mxGeometry x="0" y="10" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="7" value="WAITING / validation" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#64748B;fontStyle=0;" vertex="1" parent="5">
+          <mxGeometry x="40" y="0" width="360" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="8" value="" style="rounded=0;html=1;fillColor=#D5E8D4;strokeColor=#82B366;" vertex="1" parent="5">
+          <mxGeometry x="420" y="10" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="9" value="success / commit / RUNNING" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#64748B;fontStyle=0;" vertex="1" parent="5">
+          <mxGeometry x="460" y="0" width="360" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="10" value="" style="rounded=0;html=1;fillColor=#FFF0E5;strokeColor=#D79B00;" vertex="1" parent="5">
+          <mxGeometry x="840" y="10" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="failure / stay WAITING" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#64748B;fontStyle=0;" vertex="1" parent="5">
+          <mxGeometry x="880" y="0" width="360" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="12" value="" style="rounded=0;html=1;fillColor=#F5F5F5;strokeColor=#94A3B8;" vertex="1" parent="5">
+          <mxGeometry x="1260" y="10" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="13" value="源码锚点 / 注释" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#64748B;fontStyle=0;" vertex="1" parent="5">
+          <mxGeometry x="1300" y="0" width="360" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="14" value="&lt;div style=&quot;text-align:center;line-height:1.15&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold&quot;&gt;等待中的请求&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px&quot;&gt;普通新请求还在等待队列中&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B&quot;&gt;WAITING queue · request.status = WAITING&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=8;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#1E3A5F;fillColor=#EDF4FC;strokeColor=#A7BDDA;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="570" y="330" width="660" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="15" value="&lt;div style=&quot;text-align:center;line-height:1.15&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold&quot;&gt;查看队头，尚未出队&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px&quot;&gt;选中一个候选请求，保留其队列位置&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B&quot;&gt;request = request_queue.peek_request()&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=8;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#1E3A5F;fillColor=#EDF4FC;strokeColor=#A7BDDA;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="570" y="450" width="660" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="16" value="&lt;div style=&quot;text-align:center;line-height:1.15&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold&quot;&gt;计算已有进度与本轮候选工作量&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px&quot;&gt;结合本地缓存、剩余预算和分块规则，得到候选量 n&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B&quot;&gt;num_new_tokens = request.num_tokens − num_computed_tokens&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=8;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#1E3A5F;fillColor=#EDF4FC;strokeColor=#A7BDDA;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="570" y="580" width="660" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="17" value="&lt;div style=&quot;text-align:center;line-height:1.15&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold&quot;&gt;验证并取得 KV 缓存空间&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px&quot;&gt;尝试复用 / 分配候选工作所需的 KV 块&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B&quot;&gt;new_blocks = kv_cache_manager.allocate_slots(...)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=8;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#1E3A5F;fillColor=#EDF4FC;strokeColor=#A7BDDA;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="570" y="740" width="660" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="18" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#6C8EBF;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#6C8EBF;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="14" target="15">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="19" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#6C8EBF;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#6C8EBF;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="15" target="16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="20" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#6C8EBF;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#6C8EBF;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="16" target="17">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="21" value="&lt;div style=&quot;line-height:1.35&quot;&gt;&lt;b style=&quot;font-size:22px&quot;&gt;队列归属 ≠ 请求状态&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;queue membership：对象在哪个队列 / 列表中。&lt;br/&gt;RequestStatus：请求状态字段的值。&lt;br/&gt;&lt;br/&gt;两个维度分别更新；暂时加入 running 时，旧 status 仍可保留。&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=18;dashed=1;dashPattern=5 4;fillColor=#F5F5F5;strokeColor=#94A3B8;strokeWidth=1.5;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#475569;align=left;" vertex="1" parent="1">
+          <mxGeometry x="70" y="450" width="420" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="22" value="&lt;div style=&quot;line-height:1.35&quot;&gt;&lt;b style=&quot;font-size:22px&quot;&gt;为什么先 append、后改 status？&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;成功路径先加入 running，随后利用旧状态分类：&lt;br/&gt;&lt;b&gt;WAITING → new&lt;/b&gt;&lt;br/&gt;&lt;b&gt;PREEMPTED → resumed&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;完成分类和记账后，再统一设为 RUNNING。&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=18;dashed=1;dashPattern=5 4;fillColor=#F5F5F5;strokeColor=#94A3B8;strokeWidth=1.5;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#475569;align=left;" vertex="1" parent="1">
+          <mxGeometry x="1310" y="450" width="420" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="23" value="02 · 成功：提交 admission" style="swimlane;html=1;whiteSpace=wrap;startSize=45;rounded=1;arcSize=5;container=1;collapsible=0;pointerEvents=0;strokeWidth=1.5;fontFamily=Noto Sans CJK SC;fontSize=23;fontStyle=1;align=left;spacingLeft=20;fillColor=#F3F9F1;swimlaneFillColor=#F3F9F1;strokeColor=#82B366;fontColor=#14532D;" vertex="1" parent="1">
+          <mxGeometry x="70" y="910" width="730" height="1150" as="geometry" />
+        </mxCell>
+        <mxCell id="24" value="03 · 失败：保留等待，未来重试" style="swimlane;html=1;whiteSpace=wrap;startSize=45;rounded=1;arcSize=5;container=1;collapsible=0;pointerEvents=0;strokeWidth=1.5;fontFamily=Noto Sans CJK SC;fontSize=23;fontStyle=1;align=left;spacingLeft=20;fillColor=#FFF8F1;swimlaneFillColor=#FFF8F1;strokeColor=#D79B00;fontColor=#9A3412;" vertex="1" parent="1">
+          <mxGeometry x="1000" y="910" width="730" height="1150" as="geometry" />
+        </mxCell>
+        <mxCell id="25" value="&lt;div style=&quot;text-align:center;line-height:1.15&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold&quot;&gt;KV 分配成功&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px&quot;&gt;资源条件通过，可以开始提交&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B&quot;&gt;new_blocks is not None&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=8;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#14532D;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.6;" vertex="1" parent="23">
+          <mxGeometry x="55" y="60" width="620" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="26" value="&lt;div style=&quot;text-align:center;line-height:1.15&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold&quot;&gt;从等待队列出队&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px&quot;&gt;此刻才真正移除队头请求&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B&quot;&gt;request = request_queue.pop_request()&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=8;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#14532D;fillColor=#EAF4E8;strokeColor=#82B366;strokeWidth=1.6;" vertex="1" parent="23">
+          <mxGeometry x="55" y="180" width="620" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="27" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#538F53;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#538F53;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="25" target="26">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="28" value="&lt;div style=&quot;text-align:center;line-height:1.15&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold&quot;&gt;加入运行列表&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px&quot;&gt;队列归属变了，暂时保留旧状态&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B&quot;&gt;self.running.append(request)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=8;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#14532D;fillColor=#EAF4E8;strokeColor=#82B366;strokeWidth=1.6;" vertex="1" parent="23">
+          <mxGeometry x="55" y="300" width="620" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="29" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#538F53;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#538F53;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="26" target="28">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="&lt;div style=&quot;text-align:center;line-height:1.15&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold&quot;&gt;用旧状态区分 new / resumed&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px&quot;&gt;WAITING → 新接纳；PREEMPTED → 恢复运行&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B&quot;&gt;scheduled_new_reqs / scheduled_resumed_reqs&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=8;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#14532D;fillColor=#EAF4E8;strokeColor=#82B366;strokeWidth=1.6;" vertex="1" parent="23">
+          <mxGeometry x="55" y="420" width="620" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="31" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#538F53;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#538F53;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="28" target="30">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="32" value="&lt;div style=&quot;text-align:center;line-height:1.15&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold&quot;&gt;登记 KV 块与本轮计算量&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px&quot;&gt;保存请求的全部 KV 块，以及候选工作量 n&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B&quot;&gt;get_blocks(request_id) · num_scheduled_tokens[id] = n&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=8;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#14532D;fillColor=#EAF4E8;strokeColor=#82B366;strokeWidth=1.6;" vertex="1" parent="23">
+          <mxGeometry x="55" y="540" width="620" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="33" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#538F53;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#538F53;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="30" target="32">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="34" value="&lt;div style=&quot;text-align:center;line-height:1.15&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold&quot;&gt;扣减本轮共享预算&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px&quot;&gt;本例无额外草稿位置，两份预算都扣 n&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B&quot;&gt;token_budget -= n · input_budget -= n&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=8;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#14532D;fillColor=#EAF4E8;strokeColor=#82B366;strokeWidth=1.6;" vertex="1" parent="23">
+          <mxGeometry x="55" y="660" width="620" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="35" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#538F53;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#538F53;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="32" target="34">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="36" value="&lt;div style=&quot;text-align:center;line-height:1.15&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold&quot;&gt;状态改为 RUNNING&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px&quot;&gt;完成分类与计划记账后，更新状态字段&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B&quot;&gt;request.status = RequestStatus.RUNNING&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=8;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#14532D;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.6;" vertex="1" parent="23">
+          <mxGeometry x="55" y="780" width="620" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="37" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#538F53;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#538F53;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="34" target="36">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="38" value="&lt;div style=&quot;text-align:center;line-height:1.15&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold&quot;&gt;同步本轮计算的起始进度&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px&quot;&gt;记录缓存复用后，本轮从哪里开始计算&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B&quot;&gt;request.num_computed_tokens = num_computed_tokens&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=8;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#14532D;fillColor=#EAF4E8;strokeColor=#82B366;strokeWidth=1.6;" vertex="1" parent="23">
+          <mxGeometry x="55" y="900" width="620" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="39" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#538F53;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#538F53;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="36" target="38">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="40" value="&lt;div style=&quot;text-align:center;line-height:1.15&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold&quot;&gt;汇总进本轮 execution plan&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px&quot;&gt;请求已获接纳，计划将交给执行器&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B&quot;&gt;NewRequestData / CachedRequestData → SchedulerOutput&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=8;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#14532D;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.6;" vertex="1" parent="23">
+          <mxGeometry x="55" y="1020" width="620" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="41" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#538F53;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#538F53;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="38" target="40">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="42" value="&lt;div style=&quot;text-align:center;line-height:1.15&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold&quot;&gt;KV 分配失败&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px&quot;&gt;候选工作量未通过容量验证&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B&quot;&gt;allocate_slots() returns None&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=8;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#8B2521;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.6;" vertex="1" parent="24">
+          <mxGeometry x="55" y="60" width="620" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="43" value="&lt;div style=&quot;text-align:center;line-height:1.15&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold&quot;&gt;不出队&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px&quot;&gt;请求继续保留原来的等待队列位置&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B&quot;&gt;不执行 request_queue.pop_request()&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=8;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#9A3412;fillColor=#FFF0E5;strokeColor=#D79B00;strokeWidth=1.6;" vertex="1" parent="24">
+          <mxGeometry x="55" y="180" width="620" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="44" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#C45D3B;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#C45D3B;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="42" target="43">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="45" value="&lt;div style=&quot;text-align:center;line-height:1.15&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold&quot;&gt;不加入 running&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px&quot;&gt;本轮不接纳这个请求&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B&quot;&gt;不执行 self.running.append(request)&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=8;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#9A3412;fillColor=#FFF0E5;strokeColor=#D79B00;strokeWidth=1.6;" vertex="1" parent="24">
+          <mxGeometry x="55" y="300" width="620" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="46" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#C45D3B;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#C45D3B;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="43" target="45">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="47" value="&lt;div style=&quot;text-align:center;line-height:1.15&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold&quot;&gt;不扣减预算&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px&quot;&gt;本次失败不占用候选工作量对应的预算&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B&quot;&gt;token_budget / input_budget 不扣减&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=8;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#9A3412;fillColor=#FFF0E5;strokeColor=#D79B00;strokeWidth=1.6;" vertex="1" parent="24">
+          <mxGeometry x="55" y="420" width="620" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="48" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#C45D3B;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#C45D3B;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="45" target="47">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="49" value="&lt;div style=&quot;text-align:center;line-height:1.15&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold&quot;&gt;请求状态保持不变&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px&quot;&gt;本图中的普通新请求仍为 WAITING&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B&quot;&gt;不执行 request.status = RUNNING&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=8;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#9A3412;fillColor=#FFF0E5;strokeColor=#D79B00;strokeWidth=1.6;" vertex="1" parent="24">
+          <mxGeometry x="55" y="540" width="620" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="50" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#C45D3B;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#C45D3B;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="47" target="49">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="51" value="&lt;div style=&quot;text-align:center;line-height:1.15&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold&quot;&gt;停止本轮等待队列扫描&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px&quot;&gt;结束当前 WAITING admission 循环&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B&quot;&gt;break&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=8;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#9A3412;fillColor=#FFF0E5;strokeColor=#D79B00;strokeWidth=1.6;" vertex="1" parent="24">
+          <mxGeometry x="55" y="660" width="620" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="52" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#C45D3B;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#C45D3B;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="49" target="51">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="53" value="&lt;div style=&quot;text-align:center;line-height:1.15&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold&quot;&gt;留在等待队列，未来轮次重试&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px&quot;&gt;后续 schedule() 再次检查资源条件&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B&quot;&gt;WAITING queue · retry on a later iteration&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=8;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#8B2521;fillColor=#F8CECC;strokeColor=#B85450;strokeWidth=1.6;" vertex="1" parent="24">
+          <mxGeometry x="55" y="780" width="620" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="54" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#C45D3B;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#C45D3B;labelBackgroundColor=#FFFFFF;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="51" target="53">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="55" value="成功" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#538F53;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#538F53;labelBackgroundColor=#FFFFFF;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="17" target="25">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="735" y="880" />
+              <mxPoint x="435" y="880" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="56" value="失败" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#C45D3B;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#C45D3B;labelBackgroundColor=#FFFFFF;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="17" target="42">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1065" y="880" />
+              <mxPoint x="1365" y="880" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="57" value="&lt;div style=&quot;line-height:1.35&quot;&gt;&lt;b style=&quot;font-size:21px&quot;&gt;失败路径：这些是未发生的提交动作&lt;/b&gt;&lt;br/&gt;&lt;br/&gt;源码在 new_blocks is None 时直接 break；&lt;br/&gt;不会依次执行这些“不操作”步骤。&lt;br/&gt;&lt;br/&gt;本轮之前已安排的请求仍可按计划执行。&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=18;dashed=1;dashPattern=5 4;fillColor=#F5F5F5;strokeColor=#94A3B8;strokeWidth=1.5;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#475569;align=left;" vertex="1" parent="24">
+          <mxGeometry x="55" y="920" width="620" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="58" value="源码锚点：vllm/v1/core/sched/scheduler.py · schedule() · WAITING admission" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#64748B;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="70" y="2090" width="1660" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="59" value="本图展示资源验证与计划提交；随后 _update_after_schedule() 推进账面进度，execute_model() 发起模型执行。" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#64748B;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="70" y="2130" width="1660" height="35" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

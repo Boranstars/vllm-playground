@@ -430,3 +430,115 @@ input_budget -= num_new_tokens + draft_slots
 [![每轮预算生命周期](diagrams/vllm-budget-per-iteration-lifecycle.png)](diagrams/vllm-budget-per-iteration-lifecycle.svg)
 
 每次 `schedule()` 开始都重新初始化预算。示例中 RUNNING A、B 成功 commit 后，预算从 2048 依次降到 1536、512；WAITING C 使用剩余 512，commit 后降到 0。下一轮预算重新从 2048 开始，未结束请求的进度与已有 KV 状态延续。在当前无 speculative、未单独配置调度预算的 baseline 下，`draft_slots=0`，两份预算初值与扣减同步；`token_budget` 限制调度签发量，`input_budget` 限制模型输入批次容量。
+
+# checkpoint4
+
+## 探索中的问题与结论
+
+本次只追踪 Qwen3-0.6B、纯文本、无 speculative 的普通新请求：进入时状态为 `WAITING`，尚未持有 KV blocks。依据 installed vLLM 0.31.0 的 [v1/core/sched/scheduler.py](/home/boran/PycharmProjects/vllm-playground/.venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py)，函数为 `Scheduler.schedule()`；不展开 KVCacheManager 内部。
+
+### 1. 普通 WAITING 请求的 admission 路径是什么？
+
+| 顺序 | 代码表达式 / 锚点 | 生效条件 | 语义 |
+|---|---|---|---|
+| 1 | `if not preempted_reqs and self._pause_state == PauseState.UNPAUSED:` | 本轮没有实际抢占，scheduler 未暂停 | 允许进入 WAITING 调度阶段 |
+| 2 | `while token_budget > 0`；`input_budget <= draft_slots`；`num_running >= self.max_num_active_reqs` | 仍有两种预算和 active request 名额 | WAITING 使用 RUNNING 之后剩余的预算；条件不足时结束扫描。无 spec 时 `draft_slots=0`，普通非 streaming 路径的 `num_running` 是 `len(self.running)` |
+| 3 | `request_queue = self.kv_holding_waiting or self.waiting`；`request_queue.peek_request()` | 队列非空 | 持有 KV 的等待请求优先；本次普通新请求在 `self.waiting`。这里只查看队首，尚未出队 |
+| 4 | `_get_local_prefix_cache_hit(request)`；`num_new_tokens = request.num_tokens - num_computed_tokens` | 新请求的 `request.num_computed_tokens == 0` | 查询可复用的本地前缀，扣除缓存命中对应的进度，得到待计算量；无 connector 时外部命中数为 0 |
+| 5 | `request_token_budget = min(token_budget, input_budget - draft_slots)`；long-prefill cap；`num_new_tokens = min(num_new_tokens, request_token_budget)` | 到达普通本地 prefill 路径 | 得到本轮候选工作量。开启 Chunked Prefill 可只安排部分 prompt；关闭时，工作量超出剩余预算则 `break` |
+| 6 | `num_tokens_past_hit = max(num_new_tokens - num_replay_tokens, 0)`；`allocate_slots(...)` | 候选量非零 | 验证 KV 容量并尝试取得所需 blocks；本次无 replay，传入工作量等于 `num_new_tokens`。同时传入命中的本地 blocks 和 `full_sequence_must_fit` 等接口参数 |
+| 7 | `if new_blocks is None: ... break` | allocation 失败 | 请求没有出队，不进入本轮计划，不扣减预算；结束本轮 WAITING 扫描 |
+| 8 | `pop_request()` → `self.running.append(request)` → `scheduled_new_reqs.append(request)` → 登记计划、扣预算、设为 `RUNNING` | allocation 成功，普通新请求仍为 `WAITING` | 正式接纳请求，并安排它在本轮执行 |
+
+`full_sequence_must_fit=self.scheduler_reserve_full_isl` 值得单独记住：该版本配置默认 `scheduler_reserve_full_isl=True`，admission 会检查完整输入序列是否能容纳于 KV cache，而不只看第一个 chunk。这是容量检查，不能理解为本轮要计算完整 prompt，也不能仅凭这个开关判断实际分配了多少块；内部实现留待后续。
+
+### 2. 先验证资源，成功后提交 admission
+
+**WAITING admission：validate → commit**（点击图片查看 SVG）
+
+[![WAITING admission：容量验证与成功提交](diagrams/vllm-waiting-admission-validate-commit.png)](diagrams/vllm-waiting-admission-validate-commit.svg)
+
+图中成功侧是 allocation 通过之后发生的队列、计划和状态更新；“commit”是对这组操作的概念命名，不是源码中的独立事务函数。失败侧列出的是未发生的成功操作，不是代码逐项执行“不操作”。容量不足直接 `break`，本轮此前已安排的其他请求仍保留在执行计划中。
+
+### 3. 哪里说明被 admission 了？为什么先 append，后改 status？
+
+allocation 成功是资源条件，以下操作才把接纳结果落实到调度状态。原始代码摘录：
+
+```python
+request = request_queue.pop_request()
+self.deferred_waiting.discard(request)
+self.running.append(request)
+```
+
+请求离开等待队列，清除可能存在的 deferred 标记，再加入运行列表。`discard()` 在集合里没有这个请求时也不会报错。队列归属与 `Request.status` 是两个分别更新的维度：此时已加入 `running`，但旧状态暂时保留，便于分类。
+
+```python
+if request.status == RequestStatus.WAITING:
+    scheduled_new_reqs.append(request)
+elif request.status == RequestStatus.PREEMPTED:
+    scheduled_resumed_reqs.append(request)
+else:
+    raise RuntimeError(f"Invalid request status: {request.status}")
+```
+
+本次普通新请求走 `WAITING → scheduled_new_reqs`；`PREEMPTED → scheduled_resumed_reqs` 只记录接口，恢复机制留到 CP5。分类和计划记账后，才统一设为 `RUNNING`。同步外部 KV 加载标记属于 connector TODO；`record_event(SCHEDULED, ...)` 是统计事件。
+
+### 4. 成功后登记了什么？进度是否已经加上本轮工作量？
+
+```python
+req_to_new_blocks[request_id] = self.kv_cache_manager.get_blocks(
+    request_id
+)
+num_scheduled_tokens[request_id] = num_new_tokens
+token_budget -= num_new_tokens
+input_budget -= num_new_tokens + draft_slots
+request.status = RequestStatus.RUNNING
+request.num_computed_tokens = num_computed_tokens
+```
+
+登记请求当前的 KV blocks 和本轮 token 数；这里的 `get_blocks()` 不能简单理解为“只取本轮新分配的块”。预算在 allocation 成功、请求出队后才扣减；本次 `draft_slots=0`，两份预算扣同一个数。
+
+这里写入的 `num_computed_tokens` 是本轮计算的起点，包括可复用缓存命中，尚未加上本轮安排量。例如 prompt=3000、命中=1024、本轮安排=512：此处进度记为 1024，计划表记为 512。`schedule()` 尾部 `_update_after_schedule()` 才把安排量加到调度账面进度中；这仍不代表 GPU 已完成计算。
+
+### 5. 新接纳的请求是否要等下一轮？与 RUNNING 如何共同打包？
+
+不用等下一轮：WAITING 分支本身就能登记本轮工作，不需要再经过已经扫描完的 RUNNING 分支。若 chunked prefill 尚有剩余，剩余部分下一轮再按 RUNNING 路径推进。
+
+| 本轮请求来源 | 调度时登记到 | 输出字段 |
+|---|---|---|
+| 从 WAITING 接纳的普通新请求 | `scheduled_new_reqs` | `scheduled_new_reqs=new_reqs_data` |
+| 本轮安排的已有 RUNNING 请求 | `scheduled_running_reqs` | `scheduled_cached_reqs=cached_reqs_data` |
+
+新请求通过 `NewRequestData.from_request(...)` 准备执行端建立状态所需的数据；已有请求通过 `_make_cached_request_data(...)` 准备更新。cached 指执行端已有请求状态，不是 prefix cache 命中。两条路径共用 `num_scheduled_tokens`，最终进入同一份本轮输出：
+
+```python
+scheduler_output = SchedulerOutput(
+    scheduled_new_reqs=new_reqs_data,
+    scheduled_cached_reqs=cached_reqs_data,
+    num_scheduled_tokens=num_scheduled_tokens,
+    # 其他字段省略
+)
+```
+
+此时产生的是执行计划，后续 Executor / ModelRunner 才执行模型；具体输出字段留到 CP6。
+
+### 6. 失败后为什么继续 WAITING？
+
+纯文本 allocation 失败路径跳过 encoder 清理，核心是：
+
+```python
+if new_blocks is None:
+    # The request cannot be scheduled.
+    # 此处 encoder 清理分支省略
+    break
+```
+
+前面只有 `peek_request()`，后面的 `pop_request()`、加入 running、计划登记、预算扣减和状态转换都未执行。因此请求留在原等待队列，状态仍为 `WAITING`。不是失败后重新赋值 WAITING，而是没有走到状态转换。
+
+这个 `break` 退出本轮整个 WAITING 扫描，不继续尝试后面的等待请求。预算或 active request 名额不足也会更早退出。下一轮重新检查资源条件，可能再次尝试；本次不把 WAITING allocation 失败展开成 RUNNING victim / preemption 路径。
+
+### 7. 滑动窗口 KV 是否需要在 CP4 深入？
+
+沿途的 `SWA bounded replay` 属于 Sliding Window Attention 的缓存恢复处理，本次 Qwen3-0.6B baseline 跳过，`num_replay_tokens=0`。它与 prefix cache、Chunked Prefill 是不同维度：滑动窗口决定注意力需要哪些历史 KV；prefix cache 复用已计算的相同前缀；Chunked Prefill 决定本轮计算多少 prompt token。
+
+TODO：特殊 WAITING 状态、streaming / stale output、connector、LoRA、多模态 / encoder、structured output、speculative / MTP、Mamba、SWA replay、DP prefill cadence。CP4 只保留“等待队列中的请求 → 候选工作量 → KV 容量验证 → 成功接纳并进入本轮计划 / 失败继续等待”。
