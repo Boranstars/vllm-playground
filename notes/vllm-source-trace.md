@@ -661,3 +661,156 @@ if not preempted_reqs and self._pause_state == PauseState.UNPAUSED:
 因此，只要本轮发生实际抢占，列表就非空，本轮跳过 WAITING admission。为当前请求重试 KV allocation，与稍后是否允许 WAITING admission，是两个分别判断的控制点；被放回等待队列的 victim 也不会在这一轮从 WAITING 路径恢复。
 
 TODO：KV 释放与 `_request_blocks_can_be_freed()` 内部、恢复后的重新计算、priority scheduling、connector / offload、speculative / async stale output。当前已串起“选择 victim → 从 RUNNING 出队 → 抢占并重新入队 → 当前申请者重试或退出 → 本轮跳过 WAITING”。
+
+# checkpoint6
+
+## 阅读指导
+
+**1. 三个数据类的定义**
+
+文件：[v1/core/sched/output.py](/home/boran/PycharmProjects/vllm-playground/.venv/lib/python3.12/site-packages/vllm/v1/core/sched/output.py)
+
+| 类 / 函数 | 建议先看的范围 | 这段代码负责什么 |
+|---|---|---|
+| `NewRequestData` | 类开头的字段声明，重点看 `req_id`、`prompt_token_ids`、`sampling_params`、`block_ids`、`num_computed_tokens`；接着看 `from_request()` 中对应的赋值 | 定义新请求的数据，并从内部 Request 构造它 |
+| `CachedRequestData` | 从 `req_ids` 到 `num_output_tokens`，保留字段旁的注释；暂不读后面的辅助方法 | 定义已有请求的本轮更新数据 |
+| `SchedulerOutput` | 类开头至 `total_num_scheduled_tokens`；然后跳看 `finished_req_ids` 和 `preempted_req_ids` | 定义本轮调度结果的外层容器 |
+
+多模态、speculative、connector 等字段跳过；`__repr__()` 不读。
+
+**2. `schedule()` 尾部的构造位置**
+
+文件：[v1/core/sched/scheduler.py](/home/boran/PycharmProjects/vllm-playground/.venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py)
+
+| 函数 | 搜索锚点与最小范围 | 这段代码负责什么 |
+|---|---|---|
+| `Scheduler.schedule()` | 搜索 `# Construct the scheduler output.`，看到 `cached_reqs_data = self._make_cached_request_data(...)` 调用结束 | 准备新请求数据与已有请求更新数据 |
+| `Scheduler._make_cached_request_data()` | 先只搜索并读 `return CachedRequestData(...)` 的完整构造参数 | 将收集到的更新字段组装成 `CachedRequestData` |
+| `Scheduler.schedule()` | 搜索 `scheduler_output = SchedulerOutput(`，只核对第一项中读过的字段与传入变量 | 将请求数据和本轮计划封装成输出 |
+| `Scheduler.schedule()` | 搜索 `schedule: update_after_schedule`，读到 `return scheduler_output` | 定位输出构造后的更新调用与返回顺序 |
+
+构造新请求处有 `use_v2_model_runner` 的两条路径，先比较 `NewRequestData.from_request(...)` 的参数，不深入 runner 差异。
+
+**3. 输出生成后的 request 状态更新**
+
+同一文件，函数 **`Scheduler._update_after_schedule()`**，分三小段读：
+
+| 建议范围 / 锚点 | 这段代码负责什么 |
+|---|---|
+| 函数开头的注释，到 `request.num_in_flight_tokens += num_scheduled_token` | 说明更新时机，并更新已安排请求的进度计数 |
+| `request.is_prefill_chunk = ...` 到 `self._inflight_prefills.discard(request)` | 更新 prefill 判断与跟踪记录；跳过 structured output 赋值 |
+| `# Clear the finished and preempted request IDs.` 到函数结束 | 收尾处理 scheduler 保存的 finished / preempted ID 集合 |
+
+`defer_block_free` 分支和 placeholder 的特殊用途先标 TODO。读完这里就停止，消费者留给 CP7。
+
+## 探索中的问题与结论
+
+本次阅读 installed vLLM 0.31.0 的 `NewRequestData`、`CachedRequestData`、`SchedulerOutput`，以及 `Scheduler.schedule()` 尾部的构造与 `_update_after_schedule()`。只确认对外接口和调度后的内部更新，执行侧消费者留到 CP7。
+
+### 1. 本轮自己提出了哪些问题，形成了什么理解？
+
+| 提出的问题 / 核验点 | 已形成的理解 |
+|---|---|
+| 两个 Data 类的字段有什么区别？ | 新请求提供初始化信息，已有请求提供更新；主动认出了 `CachedRequestData` 的 SOA 结构 |
+| `req_ids` 与 `resumed_req_ids` 有什么区别？ | 前者是更新总名单，后者是恢复请求子集，决定 block IDs 是追加还是替换 |
+| 看 `SchedulerOutput` 能收获什么？ | 能识别请求数据、本轮工作量和状态同步三类信息；准确指出每个 request 的工作量保存在以 ID 为 key 的 map 中 |
+| 为什么构造输出后再更新进度？ | 先指出内部进度推进让下一轮可以继续；随后补齐输出需要保留本轮输入起点的原因 |
+| `num_computed_tokens` 能否代表已完成计算？ | 起初不确定如何判断；通过更新依据是安排量、时机在执行前，区分了调度账面进度与 GPU 完成进度 |
+| prefill 标记这里还要分析什么？ | 已认出它是在更新 prefill 判断；不再需要继续 prefill 时移除跟踪记录 |
+| 为什么换用新集合，而不直接 `.clear()`？ | 自己指出旧集合还要交给外部，清空它会同时影响输出中的集合 |
+
+**Scheduler → SchedulerOutput → Execution side 跨层接口图**（点击图片查看 SVG）
+
+[![CP6：调度状态、本轮计划与执行侧的系统边界](diagrams/vllm-scheduler-output-execution-boundary.png)](diagrams/vllm-scheduler-output-execution-boundary.svg)
+
+Scheduler 保留等待 / 运行队列、预算和决策过程，通过 `SchedulerOutput` 交付本轮 execution plan 与 state synchronization message。执行侧按接口信息更新已有执行状态并执行本轮工作，不需要知道调度器如何选择请求或 victim。底部时间线强调：先构造计划，再推进调度器账面进度，最后返回；调度状态、执行计划和实际执行完成状态是不同层次。snapshot 指本轮计划视图，不表示所有内部对象都被深拷贝。
+
+### 2. NewRequestData 与 CachedRequestData 的字段区别是什么？
+
+定义在 [v1/core/sched/output.py](/home/boran/PycharmProjects/vllm-playground/.venv/lib/python3.12/site-packages/vllm/v1/core/sched/output.py)。这里的 cached 指执行侧已有请求状态，不是命中 prefix cache。
+
+| 对比项 | NewRequestData | CachedRequestData |
+|---|---|---|
+| 数据单位 | 一个请求的初始化数据 | 多个已有请求的更新集合 |
+| 请求标识 | `req_id: str` | `req_ids: list[str]` |
+| Prompt / 参数 | `prompt_token_ids`、`sampling_params` 等初始化信息 | 不需要通过同名字段每轮重传这些信息 |
+| KV blocks | `block_ids` | `new_block_ids`，配合恢复标记决定追加或替换 |
+| 计算进度 | `num_computed_tokens: int` | `num_computed_tokens: list[int]` |
+| 输出数量 | 没有独立的输出计数字段 | `num_output_tokens: list[int]` |
+| 恢复标记 | 没有 `resumed_req_ids` | `resumed_req_ids: set[str]` |
+
+`scheduled_new_reqs` 是逐个 `NewRequestData` 对象组成的列表；`CachedRequestData` 则采用 SOA 组织方式，其多个列表按位置对应：`req_ids[i]`、`new_block_ids[i]`、`num_computed_tokens[i]`、`num_output_tokens[i]` 描述同一个请求。Token 更新与 V2 / pipeline parallel 专用字段先标 TODO。
+
+### 3. req_ids 与 resumed_req_ids 为什么同时存在？
+
+前者列出这份 `CachedRequestData` 包含的全部请求，后者标记其中被抢占后恢复的请求。例如 `req_ids=["A", "B", "C"]`、`resumed_req_ids={"B"}`：A、C 的 `new_block_ids` 追加到原 block IDs，B 的则替换原 block IDs。列表用于和其他字段按索引对应，集合用于判断是否属于恢复请求。
+
+这与 CP5 对应：普通 RUNNING 请求在已有 KV 状态上增长；被抢占的请求调用过释放接口，恢复时需要更新执行侧的 block 表。这里只读到了接口约定，消费者如何落实尚未追踪；V2 runner 的恢复请求打包差异也先保留 TODO。
+
+### 4. 看 SchedulerOutput 这个类能收获什么？
+
+重点是识别 Scheduler 对外描述本轮计划的三类信息，不需要记住所有字段：
+
+| 信息类别 | 关键字段 | 对应已读内容 |
+|---|---|---|
+| 请求数据 | `scheduled_new_reqs`、`scheduled_cached_reqs` | CP4 admission 的新请求与已有 RUNNING 请求数据 |
+| 本轮工作量 | `num_scheduled_tokens`、`total_num_scheduled_tokens` | CP3 最终裁剪得到的工作量；每个 request 的数量用 ID → token 数映射保存 |
+| 状态同步 | `finished_req_ids`、`preempted_req_ids`，以及请求数据中的 block / state updates | CP5 的抢占登记与请求生命周期通知 |
+
+本轮自己已经准确指出：新 / 已有请求数据分别在两个字段中，工作量在以 request ID 为 key 的 map 中，抢占 ID 在 `preempted_req_ids` 中。该字段在类注释中注明为 V2 model runner 使用；具体消费差异不在本次展开。
+
+### 5. 为什么先构造输出，再更新 num_computed_tokens？如何判断它不是完成量？
+
+先构造输出，保留本轮输入起点；随后调度器推进内部进度，为下一轮准备。例：原进度 1024，本轮安排 512，输出携带起点 1024 和工作量 512，内部账面进度随后变为 1536。
+
+`Scheduler._update_after_schedule()` 中的原始更新：
+
+```python
+num_scheduled_tokens = scheduler_output.num_scheduled_tokens
+for req_id, num_scheduled_token in num_scheduled_tokens.items():
+    request = self.requests[req_id]
+    request.num_computed_tokens += num_scheduled_token
+    request.num_in_flight_tokens += num_scheduled_token
+```
+
+这里增加的是本轮安排量，且调用发生在 `schedule()` 返回之前，尚未将这份计划交给执行侧。因此 `num_computed_tokens` 是调度账面进度，可能包含未完成的工作；`num_in_flight_tokens` 同时记录在途工作。实际完成后的处理留给后续，不把这次更新当成 GPU 已完成。
+
+### 6. prefill 标记与跟踪集合在收尾时如何更新？
+
+```python
+request.is_prefill_chunk = request.num_computed_tokens < (
+    request.num_tokens + request.num_output_placeholders
+)
+```
+
+本次观察更新后的账面进度是否还落后于目标 token 范围，placeholder 特殊用途先跳过。随后在已不需要继续 prefill 时移除跟踪记录：
+
+```python
+if not request.is_prefill_chunk:
+    self._inflight_prefills.discard(request)
+```
+
+这是调度器内部跟踪状态的收尾，不是执行完成通知。
+
+### 7. 为什么重新赋值 set()，而不调用 clear()？
+
+构造输出时，以下参数传入的是原集合对象的引用：
+
+```python
+preempted_req_ids=self.reset_preempted_req_ids,
+finished_req_ids=self.finished_req_ids,
+```
+
+`_update_after_schedule()` 末尾换用新集合：
+
+```python
+# Clear the finished and preempted request IDs.
+# NOTE: We shouldn't just clear() here because it will also affect
+# the scheduler output.
+self.finished_req_ids = set()
+self.reset_preempted_req_ids = set()
+```
+
+自己已判断出：`.clear()` 会清空输出仍引用的旧集合；`= set()` 只让 Scheduler 换用新的集合，输出继续保留本轮要交给外部的 ID。
+
+TODO：Executor / Worker / ModelRunner 消费链留到 CP7；speculative、multimodal、connector、structured output、runner 差异、deferred block free 和结果返回后的进度修正不在 CP6 展开。当前已区分请求状态、调度账面进度、本轮执行计划与实际执行完成状态。
