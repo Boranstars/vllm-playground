@@ -542,3 +542,122 @@ if new_blocks is None:
 沿途的 `SWA bounded replay` 属于 Sliding Window Attention 的缓存恢复处理，本次 Qwen3-0.6B baseline 跳过，`num_replay_tokens=0`。它与 prefix cache、Chunked Prefill 是不同维度：滑动窗口决定注意力需要哪些历史 KV；prefix cache 复用已计算的相同前缀；Chunked Prefill 决定本轮计算多少 prompt token。
 
 TODO：特殊 WAITING 状态、streaming / stale output、connector、LoRA、多模态 / encoder、structured output、speculative / MTP、Mamba、SWA replay、DP prefill cadence。CP4 只保留“等待队列中的请求 → 候选工作量 → KV 容量验证 → 成功接纳并进入本轮计划 / 失败继续等待”。
+
+# checkpoint5
+
+## 探索中的问题与结论
+
+本次沿 installed vLLM 0.31.0 的 [v1/core/sched/scheduler.py](/home/boran/PycharmProjects/vllm-playground/.venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py)，只追踪 `Scheduler.schedule()` 中普通 RUNNING 请求的 FCFS 抢占路径，以及 `Scheduler._preempt_request()` 的核心状态更新。Priority scheduling、connector、offload 和 speculative / async 输出处理先跳过。
+
+### 1. victim selection 之前已经看过，CP5 新串起了什么？
+
+之前只认出了“allocation 失败后选择 victim”，这次继续追踪实际出队、状态重置、重新入队，以及回到调用处后的重试或退出。
+
+| 顺序 | 代码表达式 / 锚点 | 生效条件 | 本次确认的行为 |
+|---|---|---|---|
+| 1 | `allocate_slots(...)`；`if new_blocks is not None: break` | 当前 RUNNING 请求尝试申请本轮 KV 空间 | 成功退出分配小循环，继续登记本轮计划；失败才继续看后面的分支 |
+| 2 | `preempted_req = self.running[-1]` | 本次 FCFS 路径 | 查看 RUNNING 队尾，选出 victim 候选 |
+| 3 | `if not self._request_blocks_can_be_freed(preempted_req): break` | 已选出候选 | 实际抢占前仍有释放条件检查；失败不一定就执行抢占，检查内部留作 TODO |
+| 4 | `preempted_req = self.running.pop()`；`self._preempt_request(...)` | 通过前面的检查 | 从 RUNNING 列表移除 victim，再调用抢占函数 |
+| 5 | `_free_request_blocks(...)`；设为 `PREEMPTED`；进度归零；`waiting.prepend_request(...)` | 进入 `_preempt_request()` | 调用释放接口、更新 victim 的状态，并放回等待队列 |
+| 6 | `preempted_reqs.append(preempted_req)`；`if preempted_req == request: break` | 实际抢占完成 | 记录本轮抢占；victim 与当前申请者不同则继续分配循环，相同则退出该循环 |
+| 7 | `if new_blocks is None: break`；WAITING 入口的 `if not preempted_reqs ...` | 回到分配循环之外 | allocation 仍失败则退出 RUNNING 扫描；本轮有实际抢占则跳过 WAITING admission |
+
+**RUNNING KV allocation failure → Preemption 控制流**（点击图片查看 SVG）
+
+[![CP5：Current 与 Victim 的抢占控制流](diagrams/vllm-running-kv-failure-preemption.png)](diagrams/vllm-running-kv-failure-preemption.svg)
+
+蓝色 Current 是当前申请更多 KV 的请求，橙色 Victim 是被选中用于释放 KV 的请求，两者不一定相同。图中展示通过释放条件检查后的 FCFS 路径：Victim 被抢占并放回等待队首后，若两者不同则重试 Current 的 allocation；若相同则当前请求本轮停止推进。源码名仅作辅助，async / speculative / connector 路径省略。
+
+### 2. running[-1] 与 running.pop() 有什么区别？victim 一定是当前请求吗？
+
+FCFS 下，`self.running[-1]` 只查看队尾候选，`self.running.pop()` 才把它从列表移除。以下是 FCFS 分支及紧邻调用的摘录：
+
+```python
+else:
+    preempted_req = self.running.pop()
+
+self._preempt_request(
+    preempted_req,
+    scheduled_timestamp,
+    drop_stale_output=self.requires_kv_delivery,
+)
+```
+
+传入的是选出的 `preempted_req`，不一定是当前申请 KV 的 `request`。`_preempt_request()` 的 docstring 也明确要求，调用方应先将请求从 running 队列移除。`drop_stale_output` 的特殊用途留作 TODO。
+
+### 3. 抢占后释放、移除和重置了什么？会清空 token 内容吗？
+
+`_preempt_request()` 先断言请求状态为 `RUNNING`，然后核心操作如下：
+
+```python
+self._free_request_blocks(request)
+self.encoder_cache_manager.free(request)
+self._inflight_prefills.discard(request)
+request.status = RequestStatus.PREEMPTED
+request.num_computed_tokens = 0
+```
+
+这里调用 KV 释放接口，移除 inflight-prefill 跟踪记录，改为 `PREEMPTED`，计算进度归零。纯文本路径的 encoder 清理先略过；`discard()` 本身不是取消已经提交的 GPU 执行。
+
+`num_computed_tokens = 0` 重置的是计算进度，不会因此清空 prompt 或已生成 token。请求保存的 token 内容与 computed 进度是两个维度；重新恢复后如何计算，以及缓存如何复用，本次尚未深入。
+
+### 4. prepend_request 放到哪里？在等待队列中就必须是 WAITING 吗？
+
+函数末尾的关键语句：
+
+```python
+request.num_preemptions += 1
+```
+
+```python
+# Put the request back to the waiting queue.
+self.waiting.prepend_request(request)
+self.reset_preempted_req_ids.add(request.request_id)
+```
+
+当前 FCFS 路径中，`prepend_request()` 将 victim 放到 `self.waiting` 队首；状态仍为 `PREEMPTED`，没有改成普通 `WAITING`。等待容器可以存放等待恢复的被抢占请求，容器归属与状态字段不是同一回事。抢占计数与请求 ID 也被登记，ID 如何交给执行端留到 CP6。
+
+### 5. 两个 break 分别退出哪一层？
+
+回到 `schedule()` 调用处：
+
+```python
+preempted_reqs.append(preempted_req)
+if preempted_req == request:
+    # No more request to preempt. Cannot schedule this request.
+    break
+```
+
+分配小循环之外还有：
+
+```python
+if new_blocks is None:
+    # Cannot schedule this request.
+    break
+```
+
+第一个退出 `while True` 的 KV 分配 / 抢占重试循环；第二个退出本轮 RUNNING 请求扫描循环，不是退出整个 `schedule()`。第二处检查的是 `new_blocks is None`，不是某个 block 数量变量。
+
+| victim 与当前申请者的关系 | 后续控制流 |
+|---|---|
+| `preempted_req != request` | 不触发第一个 `break`，回到小循环重试当前请求的 allocation；成功则登记本轮计划，再次失败则继续按分支处理 |
+| `preempted_req == request` | 退出分配小循环；`new_blocks` 仍为 `None`，再退出 RUNNING 扫描 |
+
+### 6. 抢占后重试 allocation 成功，本轮还能进入 WAITING 吗？
+
+探索时首先注意到了执行顺序：抢占后可能先重试 KV allocation，RUNNING 阶段结束后才走到 WAITING 入口。进一步核对发现，重试成功并不会清除本轮已经登记的抢占：
+
+```python
+preempted_reqs.append(preempted_req)
+```
+
+WAITING 的外围条件仍是：
+
+```python
+if not preempted_reqs and self._pause_state == PauseState.UNPAUSED:
+```
+
+因此，只要本轮发生实际抢占，列表就非空，本轮跳过 WAITING admission。为当前请求重试 KV allocation，与稍后是否允许 WAITING admission，是两个分别判断的控制点；被放回等待队列的 victim 也不会在这一轮从 WAITING 路径恢复。
+
+TODO：KV 释放与 `_request_blocks_can_be_freed()` 内部、恢复后的重新计算、priority scheduling、connector / offload、speculative / async stale output。当前已串起“选择 victim → 从 RUNNING 出队 → 抢占并重新入队 → 当前申请者重试或退出 → 本轮跳过 WAITING”。
