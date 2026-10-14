@@ -1,0 +1,152 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="drawio" version="30.3.14">
+  <diagram id="budget-iteration-lifecycle" name="Checkpoint 3 · 两轮预算生命周期">
+    <mxGraphModel dx="1900" dy="1620" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1620" math="0" shadow="0" background="#FFFFFF">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="2" value="token_budget / input_budget · 每轮预算生命周期" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=34;fontColor=#0F172A;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="60" y="30" width="1780" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="3" value="Per-iteration lifetime  |  Iteration N → Iteration N+1  |  预算每轮重置，请求状态跨轮延续" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#64748B;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="60" y="100" width="1780" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="4" value="&lt;div style=&quot;text-align:center;line-height:1.1&quot;&gt;&lt;span style=&quot;font-size:21px;font-weight:bold;&quot;&gt;Qwen3-0.6B · 纯文本 · 无 speculative：两份预算初值相同，扣减同步，职责不同。&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px;&quot;&gt;示例：初值均为 2048，draft_slots = 0；A / B / C 均通过 KV 容量验证后 commit。&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=10;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#1E293B;fillColor=#F5F5F5;strokeColor=#94A3B8;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="60" y="160" width="1780" height="85" as="geometry" />
+        </mxCell>
+        <mxCell id="5" value="Iteration N · 本轮 schedule()" style="swimlane;html=1;whiteSpace=wrap;startSize=45;rounded=1;arcSize=7;container=1;collapsible=0;pointerEvents=0;fillColor=#F2F7FD;swimlaneFillColor=#F2F7FD;strokeColor=#A7BDDA;strokeWidth=1.5;fontFamily=Noto Sans CJK SC;fontSize=22;fontStyle=1;fontColor=#334155;align=left;spacingLeft=20;" vertex="1" parent="1">
+          <mxGeometry x="60" y="290" width="1240" height="530" as="geometry" />
+        </mxCell>
+        <mxCell id="6" value="Iteration N+1 · 再次 schedule()" style="swimlane;html=1;whiteSpace=wrap;startSize=45;rounded=1;arcSize=7;container=1;collapsible=0;pointerEvents=0;fillColor=#F2F7FD;swimlaneFillColor=#F2F7FD;strokeColor=#A7BDDA;strokeWidth=1.5;fontFamily=Noto Sans CJK SC;fontSize=22;fontStyle=1;fontColor=#334155;align=left;spacingLeft=20;" vertex="1" parent="1">
+          <mxGeometry x="1390" y="290" width="450" height="530" as="geometry" />
+        </mxCell>
+        <mxCell id="7" value="先扫描 RUNNING 请求，再让 WAITING 使用剩余预算。" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=19;fontColor=#334155;fontStyle=1;" vertex="1" parent="5">
+          <mxGeometry x="30" y="55" width="1160" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="8" value="进入新一轮，重新读取预算配置。" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#334155;fontStyle=1;" vertex="1" parent="6">
+          <mxGeometry x="30" y="55" width="390" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="9" value="&lt;div style=&quot;text-align:center;line-height:1.1&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold;&quot;&gt;轮次开始&lt;/span&gt;&lt;br/&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px;&quot;&gt;重新领取本轮额度&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px;font-weight:bold;&quot;&gt;两份预算都从 2048 起步&lt;/span&gt;&lt;br/&gt;&lt;br/&gt;&lt;span style=&quot;font-size:11px;color:#64748B;&quot;&gt;源码辅助：&lt;br/&gt;token_budget = max_num_scheduled_tokens&lt;br/&gt;input_budget = max_num_batched_tokens&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=10;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#1E293B;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.6;" vertex="1" parent="5">
+          <mxGeometry x="30" y="100" width="240" height="205" as="geometry" />
+        </mxCell>
+        <mxCell id="10" value="&lt;div style=&quot;text-align:center;line-height:1.1&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold;&quot;&gt;RUNNING A&lt;/span&gt;&lt;br/&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px;&quot;&gt;本轮计划推进 512 tokens&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px;color:#14532D;&quot;&gt;KV 容量验证通过&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:21px;color:#14532D;font-weight:bold;&quot;&gt;commit 后扣减 512&lt;/span&gt;&lt;br/&gt;&lt;br/&gt;&lt;span style=&quot;font-size:12px;color:#64748B;&quot;&gt;源码辅助：&lt;br/&gt;num_scheduled_tokens[A] = 512&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=10;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#1E293B;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.6;" vertex="1" parent="5">
+          <mxGeometry x="330" y="100" width="240" height="205" as="geometry" />
+        </mxCell>
+        <mxCell id="11" value="&lt;div style=&quot;text-align:center;line-height:1.1&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold;&quot;&gt;RUNNING B&lt;/span&gt;&lt;br/&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px;&quot;&gt;本轮计划推进 1024 tokens&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px;color:#14532D;&quot;&gt;KV 容量验证通过&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:21px;color:#14532D;font-weight:bold;&quot;&gt;commit 后扣减 1024&lt;/span&gt;&lt;br/&gt;&lt;br/&gt;&lt;span style=&quot;font-size:12px;color:#64748B;&quot;&gt;源码辅助：&lt;br/&gt;num_scheduled_tokens[B] = 1024&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=10;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#1E293B;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.6;" vertex="1" parent="5">
+          <mxGeometry x="630" y="100" width="240" height="205" as="geometry" />
+        </mxCell>
+        <mxCell id="12" value="&lt;div style=&quot;text-align:center;line-height:1.1&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold;&quot;&gt;WAITING C&lt;/span&gt;&lt;br/&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px;&quot;&gt;使用剩余的 512 tokens&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px;color:#14532D;&quot;&gt;KV 容量验证通过&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:21px;color:#14532D;font-weight:bold;&quot;&gt;commit 后扣减 512&lt;/span&gt;&lt;br/&gt;&lt;br/&gt;&lt;span style=&quot;font-size:12px;color:#64748B;&quot;&gt;源码辅助：&lt;br/&gt;num_scheduled_tokens[C] = 512&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=10;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#1E293B;fillColor=#D5E8D4;strokeColor=#82B366;strokeWidth=1.6;" vertex="1" parent="5">
+          <mxGeometry x="930" y="100" width="240" height="205" as="geometry" />
+        </mxCell>
+        <mxCell id="13" value="&lt;div style=&quot;text-align:center;line-height:1.1&quot;&gt;&lt;span style=&quot;font-size:22px;font-weight:bold;&quot;&gt;新一轮开始&lt;/span&gt;&lt;br/&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px;&quot;&gt;再次读取同一份配置&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:22px;font-weight:bold;&quot;&gt;本轮预算恢复为 2048&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px;&quot;&gt;继续推进已有请求&lt;/span&gt;&lt;br/&gt;&lt;br/&gt;&lt;span style=&quot;font-size:12px;color:#64748B;&quot;&gt;源码辅助：重新执行&lt;br/&gt;token_budget = ... / input_budget = ...&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=10;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#1E293B;fillColor=#DAE8FC;strokeColor=#6C8EBF;strokeWidth=1.6;" vertex="1" parent="6">
+          <mxGeometry x="40" y="100" width="370" height="205" as="geometry" />
+        </mxCell>
+        <mxCell id="14" value="" style="ellipse;html=1;fillColor=#6C8EBF;strokeColor=#587EAF;strokeWidth=1.5;" vertex="1" parent="5">
+          <mxGeometry x="140" y="330" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="15" value="&lt;div style=&quot;text-align:center;line-height:1.1&quot;&gt;&lt;span style=&quot;font-size:26px;color:#1E3A5F;font-weight:bold;&quot;&gt;2048 / 2048&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:15px;&quot;&gt;初始额度&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:12px;color:#64748B;&quot;&gt;token_budget / input_budget&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=10;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#1E293B;fillColor=#EDF4FC;strokeColor=#A7BDDA;strokeWidth=1.6;" vertex="1" parent="5">
+          <mxGeometry x="50" y="370" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="16" value="" style="ellipse;html=1;fillColor=#6C8EBF;strokeColor=#587EAF;strokeWidth=1.5;" vertex="1" parent="5">
+          <mxGeometry x="440" y="330" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="17" value="&lt;div style=&quot;text-align:center;line-height:1.1&quot;&gt;&lt;span style=&quot;font-size:26px;color:#1E3A5F;font-weight:bold;&quot;&gt;1536 / 1536&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:15px;&quot;&gt;A commit 后&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:12px;color:#64748B;&quot;&gt;token_budget / input_budget&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=10;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#1E293B;fillColor=#EDF4FC;strokeColor=#A7BDDA;strokeWidth=1.6;" vertex="1" parent="5">
+          <mxGeometry x="350" y="370" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="18" value="" style="ellipse;html=1;fillColor=#6C8EBF;strokeColor=#587EAF;strokeWidth=1.5;" vertex="1" parent="5">
+          <mxGeometry x="740" y="330" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="19" value="&lt;div style=&quot;text-align:center;line-height:1.1&quot;&gt;&lt;span style=&quot;font-size:26px;color:#1E3A5F;font-weight:bold;&quot;&gt;512 / 512&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:15px;&quot;&gt;B commit 后&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:12px;color:#64748B;&quot;&gt;token_budget / input_budget&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=10;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#1E293B;fillColor=#EDF4FC;strokeColor=#A7BDDA;strokeWidth=1.6;" vertex="1" parent="5">
+          <mxGeometry x="650" y="370" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="20" value="" style="ellipse;html=1;fillColor=#6C8EBF;strokeColor=#587EAF;strokeWidth=1.5;" vertex="1" parent="5">
+          <mxGeometry x="1040" y="330" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="21" value="&lt;div style=&quot;text-align:center;line-height:1.1&quot;&gt;&lt;span style=&quot;font-size:26px;color:#1E3A5F;font-weight:bold;&quot;&gt;0 / 0&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:15px;&quot;&gt;C commit 后&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:12px;color:#64748B;&quot;&gt;token_budget / input_budget&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=10;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#1E293B;fillColor=#EDF4FC;strokeColor=#A7BDDA;strokeWidth=1.6;" vertex="1" parent="5">
+          <mxGeometry x="950" y="370" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="22" value="" style="ellipse;html=1;fillColor=#6C8EBF;strokeColor=#587EAF;strokeWidth=1.5;" vertex="1" parent="6">
+          <mxGeometry x="215" y="330" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="23" value="&lt;div style=&quot;text-align:center;line-height:1.1&quot;&gt;&lt;span style=&quot;font-size:26px;color:#1E3A5F;font-weight:bold;&quot;&gt;2048 / 2048&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:15px;&quot;&gt;新一轮初始额度&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:12px;color:#64748B;&quot;&gt;token_budget / input_budget&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=10;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#1E293B;fillColor=#EDF4FC;strokeColor=#A7BDDA;strokeWidth=1.6;" vertex="1" parent="6">
+          <mxGeometry x="125" y="370" width="200" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="24" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6C8EBF;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#6C8EBF;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="14" target="16">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="25" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6C8EBF;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#6C8EBF;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="16" target="18">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="26" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6C8EBF;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#6C8EBF;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="18" target="20">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="27" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6C8EBF;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#6C8EBF;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="20" target="22">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="28" value="下一轮：重新初始化" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#1E3A5F;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="1230" y="595" width="220" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="29" value="只有容量验证成功并 commit，才为这个请求扣减预算；尝试本身不扣减。" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#64748B;fontStyle=0;" vertex="1" parent="5">
+          <mxGeometry x="30" y="475" width="1180" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="30" value="上一轮剩余值不作为本轮起点。" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#64748B;fontStyle=0;" vertex="1" parent="6">
+          <mxGeometry x="30" y="475" width="390" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="31" value="跨轮延续的轨道 · request progress / KV state" style="swimlane;html=1;whiteSpace=wrap;startSize=45;rounded=1;arcSize=7;container=1;collapsible=0;pointerEvents=0;fillColor=#F8F4FA;swimlaneFillColor=#F8F4FA;strokeColor=#C6B6CF;strokeWidth=1.5;fontFamily=Noto Sans CJK SC;fontSize=22;fontStyle=1;fontColor=#334155;align=left;spacingLeft=20;" vertex="1" parent="1">
+          <mxGeometry x="60" y="900" width="1780" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="32" value="&lt;div style=&quot;text-align:center;line-height:1.1&quot;&gt;&lt;span style=&quot;font-size:21px;font-weight:bold;&quot;&gt;Iteration N 结束后的请求状态&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:17px;&quot;&gt;A：原进度 +512；B：原进度 +1024；C：原进度 +512&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px;&quot;&gt;未结束请求保留已有的 KV blocks。&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:12px;color:#64748B;&quot;&gt;源码辅助：num_computed_tokens += num_scheduled_token&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=10;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#1E293B;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=1.6;" vertex="1" parent="31">
+          <mxGeometry x="30" y="65" width="610" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="33" value="&lt;div style=&quot;text-align:center;line-height:1.1&quot;&gt;&lt;span style=&quot;font-size:21px;font-weight:bold;&quot;&gt;Iteration N+1 从延续状态出发&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px;&quot;&gt;沿用请求进度与已有 KV 状态，继续安排未完成的工作。&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:18px;&quot;&gt;每轮重新建立的是 budget；请求状态跨轮保留。&lt;/span&gt;&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;spacing=10;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#1E293B;fillColor=#E1D5E7;strokeColor=#9673A6;strokeWidth=1.6;" vertex="1" parent="31">
+          <mxGeometry x="1110" y="65" width="610" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="34" value="未结束请求的状态延续" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#9673A6;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=17;fontColor=#9673A6;labelBackgroundColor=#FFFFFF;exitX=1;exitY=0.5;entryX=0;entryY=0.5;exitDx=0;exitDy=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="32" target="33">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="35" value="num_computed_tokens 是调度账面进度，可含在途工作；本图示例不涉及结束、抢占或 KV 释放。" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=16;fontColor=#64748B;fontStyle=0;" vertex="1" parent="31">
+          <mxGeometry x="30" y="215" width="1720" height="35" as="geometry" />
+        </mxCell>
+        <mxCell id="36" value="同数值，不同职责 · token_budget" style="swimlane;html=1;whiteSpace=wrap;startSize=45;rounded=1;arcSize=7;container=1;collapsible=0;pointerEvents=0;fillColor=#F2F7FD;swimlaneFillColor=#F2F7FD;strokeColor=#A7BDDA;strokeWidth=1.5;fontFamily=Noto Sans CJK SC;fontSize=22;fontStyle=1;fontColor=#334155;align=left;spacingLeft=20;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1230" width="840" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="37" value="&lt;div style=&quot;text-align:center;line-height:1.1&quot;&gt;&lt;span style=&quot;font-size:21px;font-weight:bold;&quot;&gt;限制本轮调度器还能签发多少 token 工作。&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:19px;&quot;&gt;每次 commit，消耗计划推进的 token 数。&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:19px;&quot;&gt;示例：剩余 2048，commit 512 → 剩余 1536。&lt;/span&gt;&lt;br/&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B;&quot;&gt;源码辅助：token_budget -= num_new_tokens&lt;/span&gt;&lt;/div&gt;" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=19;fontColor=#334155;fontStyle=0;" vertex="1" parent="36">
+          <mxGeometry x="25" y="65" width="790" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="38" value="同数值，不同职责 · input_budget" style="swimlane;html=1;whiteSpace=wrap;startSize=45;rounded=1;arcSize=7;container=1;collapsible=0;pointerEvents=0;fillColor=#F2F7FD;swimlaneFillColor=#F2F7FD;strokeColor=#A7BDDA;strokeWidth=1.5;fontFamily=Noto Sans CJK SC;fontSize=22;fontStyle=1;fontColor=#334155;align=left;spacingLeft=20;" vertex="1" parent="1">
+          <mxGeometry x="950" y="1230" width="890" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="39" value="&lt;div style=&quot;text-align:center;line-height:1.1&quot;&gt;&lt;span style=&quot;font-size:21px;font-weight:bold;&quot;&gt;限制本轮模型输入批次的 token 容量。&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:19px;&quot;&gt;还需为额外 drafting slots 留出空间；baseline 无此项。&lt;/span&gt;&lt;br/&gt;&lt;span style=&quot;font-size:19px;&quot;&gt;draft_slots=0 时，同样消耗 512：2048 → 1536。&lt;/span&gt;&lt;br/&gt;&lt;br/&gt;&lt;span style=&quot;font-size:14px;color:#64748B;&quot;&gt;源码辅助：input_budget -= num_new_tokens + draft_slots&lt;/span&gt;&lt;/div&gt;" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=19;fontColor=#334155;fontStyle=0;" vertex="1" parent="38">
+          <mxGeometry x="25" y="65" width="840" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="40" value="" style="rounded=1;html=1;fillColor=#DAE8FC;strokeColor=#6C8EBF;" vertex="1" parent="1">
+          <mxGeometry x="70" y="1520" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="41" value="本轮预算 / RUNNING" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=16;fontColor=#64748B;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="100" y="1515" width="370" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="42" value="" style="rounded=1;html=1;fillColor=#D5E8D4;strokeColor=#82B366;" vertex="1" parent="1">
+          <mxGeometry x="490" y="1520" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="43" value="WAITING / 验证通过" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=16;fontColor=#64748B;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="520" y="1515" width="370" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="44" value="" style="rounded=1;html=1;fillColor=#E1D5E7;strokeColor=#9673A6;" vertex="1" parent="1">
+          <mxGeometry x="910" y="1520" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="45" value="跨轮请求状态" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=16;fontColor=#64748B;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="940" y="1515" width="370" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="46" value="" style="rounded=1;html=1;fillColor=#F5F5F5;strokeColor=#94A3B8;" vertex="1" parent="1">
+          <mxGeometry x="1330" y="1520" width="20" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="47" value="灰色源码辅助" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=16;fontColor=#64748B;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="1360" y="1515" width="370" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="48" value="示例假设：未暂停；未单独配置 max_num_scheduled_tokens；无 speculative，draft_slots=0；WAITING 本轮允许处理且 KV 容量足够。" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Noto Sans CJK SC;fontSize=16;fontColor=#64748B;fontStyle=0;" vertex="1" parent="1">
+          <mxGeometry x="60" y="1570" width="1780" height="35" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

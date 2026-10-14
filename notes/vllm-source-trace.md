@@ -358,3 +358,75 @@ TODO：输出字段的具体用途、状态更新，以及如何交给 ModelRunn
 本次只沿“初始化 → RUNNING → WAITING → 检查与数据准备 → 构造输出 → 收尾返回”识别边界。WAITING 入口缩小为“外围条件 → 循环入口 → 选队列 → 取请求”；比较两块共享预算的关系，比只认函数位置更有意义。
 
 当前最重要的三个认识：RUNNING 不等于本轮一定执行；WAITING 使用剩余预算；`schedule()` 产出本轮执行计划。具体的 token 计算、admission、preemption 和 KVCacheManager 内部留到后续 checkpoints。
+
+# checkpoint3
+
+## 阅读指导
+**Checkpoint 3：只沿 `num_new_tokens` 的赋值和使用追踪，预计 20–30 分钟。** Installed 与 submodule 的 `scheduler.py` 仍一致。以下链接指向 installed source，不列行数。
+
+主要文件是 [v1/core/sched/scheduler.py](/home/boran/PycharmProjects/vllm-playground/.venv/lib/python3.12/site-packages/vllm/v1/core/sched/scheduler.py)，函数为 **`Scheduler.schedule()`**。
+
+| 顺序 | 最小阅读范围 / 锚点 | 这里观察什么 |
+|---|---|---|
+| 1 | 函数开头，只找 `token_budget = self.max_num_scheduled_tokens` 和 `input_budget = ...`；再找 `long_prefill_token_threshold = (...)` | 先认出后面裁剪会用到的预算与阈值。需要确认预算配置来源时，只跳到 `Scheduler.__init__()` 中 `self.max_num_scheduled_tokens` 的赋值 |
+| 2 | RUNNING 块中第一次 `num_new_tokens = (...)`，只读这一个表达式 | 比较“请求已有的 token 范围”与“已安排计算的进度”，观察初始差额的语义 |
+| 3 | 紧接着的 `if 0 < long_prefill_token_threshold < num_new_tokens:` 及赋值 | 观察这个阈值在什么条件下替换初值。先前的 adaptive threshold 配置分支标作 TODO |
+| 4 | 紧接着的 `num_new_tokens = min(num_new_tokens, token_budget, input_budget - draft_slots)` | 观察单请求候选工作量如何受到**本轮剩余预算**限制；无 speculative decoding 时先按 `draft_slots == 0` 阅读 |
+| 5 | 注释 `Make sure the input position does not exceed the max model len.` 下的第二个 `min(...)` | 观察模型长度的剩余空间如何成为另一项上限；不展开 speculative decoding 的原因 |
+| 6 | 跳过特殊分支，找到 `if num_new_tokens == 0:`，只看 `req_index += 1`、`continue`；再找到 `allocate_slots(...)` 的调用参数 | 观察裁剪为零后如何停止当前请求的尝试，以及非零候选值在哪里交给 KV 分配接口 |
+| 7 | 跳过分配循环内部，搜索注释 `Schedule the request.`，只读到两项 budget 扣减 | 观察成功后，哪个值被登记为本轮工作量、如何扣减共享预算 |
+
+第二步只需额外打开 [v1/request.py](/home/boran/PycharmProjects/vllm-playground/.venv/lib/python3.12/site-packages/vllm/v1/request.py)，看 **`Request.num_tokens`、`Request.num_tokens_with_spec`** 两个短属性；不重新读构造函数。初值表达式中的 speculative token 和异步输出占位项先标为 **可选分支 / TODO**。
+
+第五步之后，这三处也会接触或修改该变量，但此次只留下书签：
+
+- `_mamba_block_aligned_split(...)`：**Mamba 对齐分支 / TODO**。
+- `_try_schedule_encoder_inputs(...)`：**多模态 / encoder 分支 / TODO**。
+- `_reserve_prefill_lookahead(...)`：**multi-module MTP 分支 / TODO**。
+
+Connector、DP prefill throttling、structured output 等判断也跳过。
+
+**Chunked Prefill 的观察点就在第三、第四步。** 取一个 prompt 尚未算完的 RUNNING 请求，手算一次：剩余 prompt 工作量为 `1000`，本轮剩余预算为 `128`；暂设其他上限不收紧。观察它经过这些赋值后，是否必须一次安排完整剩余 prompt。
+
+第七步的停止位置是：
+
+```python
+num_scheduled_tokens[request_id] = num_new_tokens
+token_budget -= num_new_tokens
+input_budget -= num_new_tokens + draft_slots
+```
+
+读到这里就停，不进入 preemption 或 WAITING。
+
+## 探索中的问题与结论
+
+### 1. num_new_tokens如何变化？
+
+| 顺序 | 代码表达式 | 生效条件 | 语义 | 普通主路径是否相关 |
+|---|---|---|---|---|
+| 1 | `num_new_tokens = request.num_tokens_with_spec + request.num_output_placeholders - request.num_computed_tokens` | 当前请求通过前置检查 | 请求的目标 token 范围减去调度账面进度，得到理论待计算量。`num_tokens_with_spec` 包含 prompt、已回传输出和 speculative tokens；placeholder 补充尚未回传的预期输出 | **相关**；无 spec 时 speculative 项为空，异步占位项另标 TODO |
+| 2 | `num_new_tokens = long_prefill_token_threshold` | `0 < long_prefill_token_threshold < num_new_tokens`；有效阈值还要求不止一个请求竞争 | 用单请求阈值裁剪候选工作量 | 可选配置；**之前实验阈值为 0，不生效** |
+| 3 | `num_new_tokens = min(num_new_tokens, token_budget, input_budget - draft_slots)` | 无条件执行；预算不足时才收紧 | 同时受本轮剩余调度预算和模型输入容量限制；未完成 prefill 可在这里被截为本轮的一部分 | **相关**；无 spec 时 `draft_slots = 0` |
+| 4 | `num_new_tokens = min(num_new_tokens, self.max_model_len - request.num_computed_tokens - self.num_sampled_tokens_per_step)` | 无条件执行；接近模型长度边界时收紧 | 限制推进后的输入位置，保留每步采样所需的余量 | **相关**，普通自回归生成也经过此处 |
+| 5 | `num_new_tokens = self._mamba_block_aligned_split(request, num_new_tokens)` | `self.need_mamba_block_aligned_split` | 接受 Mamba 对齐规则返回的工作量 | **Mamba 可选分支 / TODO**；Qwen3-0.6B 不走 |
+| 6 | 元组赋值中的 `num_new_tokens`，来自 `self._try_schedule_encoder_inputs(...)` | `request.has_encoder_inputs` | 接受 encoder 调度返回的工作量，可能进一步裁剪 | **多模态 / encoder 可选分支 / TODO**；纯文本不走 |
+| 7 | `num_new_tokens = self._reserve_prefill_lookahead(request, request.num_computed_tokens, num_new_tokens)` | 调用无条件；特殊 prefill lookahead 约束可能改变返回值 | 接受预留规则返回的工作量 | **MTP 可选约束 / TODO**；之前无 spec 的实验不收紧它 |
+| 8 | `if num_new_tokens == 0: ... continue` | 裁剪结果为零 | 不再尝试为当前请求安排本轮工作；**不修改变量** | **相关的出口** |
+| 9 | `self.kv_cache_manager.allocate_slots(request, num_new_tokens, num_lookahead_tokens=self.num_lookahead_tokens)` | 候选值非零并到达分配位置 | 把最终候选工作量交给 KV 分配接口；**此调用处不重新赋值该变量** | **相关**；不进入内部 |
+| 10 | `num_scheduled_tokens[request_id] = num_new_tokens`；`token_budget -= num_new_tokens`；`input_budget -= num_new_tokens + draft_slots` | KV 分配成功，并到达成功调度块 | 登记本轮请求工作量，扣减两份共享预算 | **相关**；无 spec 时两份预算都扣同一个数 |
+
+### 2. 从剩余需求到本轮候选工作量：约束漏斗
+
+**num_new_tokens 约束漏斗**（点击图片查看 SVG）
+
+[![num_new_tokens 约束漏斗](diagrams/vllm-num-new-tokens-constraint-funnel.png)](diagrams/vllm-num-new-tokens-constraint-funnel.svg)
+
+请求的理论剩余工作依次受到公平性上限、本轮预算、模型长度安全与可选约束的限制，得到本轮候选量。示例中 remaining=3000、threshold=0、剩余 budget=2048，其他约束不收紧，因此候选量为 2048。随后 KV capacity validation 验证状态空间是否允许 commit，不继续裁剪这个数；成功后才登记本轮计划并扣减预算，失败处理留到 CP5。
+
+### 3. 本轮预算与跨轮状态：两轮时间轴
+
+**token_budget / input_budget 的 per-iteration 生命周期**（点击图片查看 SVG）
+
+[![每轮预算生命周期](diagrams/vllm-budget-per-iteration-lifecycle.png)](diagrams/vllm-budget-per-iteration-lifecycle.svg)
+
+每次 `schedule()` 开始都重新初始化预算。示例中 RUNNING A、B 成功 commit 后，预算从 2048 依次降到 1536、512；WAITING C 使用剩余 512，commit 后降到 0。下一轮预算重新从 2048 开始，未结束请求的进度与已有 KV 状态延续。在当前无 speculative、未单独配置调度预算的 baseline 下，`draft_slots=0`，两份预算初值与扣减同步；`token_budget` 限制调度签发量，`input_budget` 限制模型输入批次容量。
