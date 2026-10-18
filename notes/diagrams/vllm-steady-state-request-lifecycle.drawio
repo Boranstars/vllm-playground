@@ -1,0 +1,190 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="drawio" version="30.3.14">
+  <diagram id="steady-state-request" name="稳态请求生命周期">
+    <mxGraphModel grid="1" gridSize="10" page="1" pageScale="1" pageWidth="2340" pageHeight="1740" background="#ffffff">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" value="&lt;b&gt;vLLM 稳态请求生命周期&lt;/b&gt;" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontFamily=Noto Sans CJK SC;fontSize=40;fontColor=#243448;" vertex="1" parent="1">
+          <mxGeometry x="40" y="30" width="2220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="第 1 周收尾  /  引擎已就绪之后  /  系统职责与两个时间尺度" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#657487;" vertex="1" parent="1">
+          <mxGeometry x="40" y="110" width="2220" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="swatch-api" value="" style="rounded=0;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="40" y="180" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-api" value="服务 / API" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#657487;" vertex="1" parent="1">
+          <mxGeometry x="85" y="170" width="300" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="swatch-engine" value="" style="rounded=0;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="410" y="180" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-engine" value="引擎 / 调度" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#657487;" vertex="1" parent="1">
+          <mxGeometry x="455" y="170" width="300" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="swatch-execution" value="" style="rounded=0;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="780" y="180" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-execution" value="执行侧" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#657487;" vertex="1" parent="1">
+          <mxGeometry x="825" y="170" width="300" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="swatch-gpu" value="" style="rounded=0;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="1150" y="180" width="30" height="20" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-gpu" value="模型 / GPU" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#657487;" vertex="1" parent="1">
+          <mxGeometry x="1195" y="170" width="300" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="upper-title" value="&lt;b&gt;上层 · 单个请求的完整生命周期&lt;/b&gt;" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontFamily=Noto Sans CJK SC;fontSize=27;fontColor=#243448;" vertex="1" parent="1">
+          <mxGeometry x="40" y="240" width="2220" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="client" value="&lt;div style=&quot;font-size:24px;line-height:1.3;&quot;&gt;&lt;b&gt;客户端请求&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:17px;color:#718091;margin-top:10px;&quot;&gt;Client Request&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#f5f5f5;strokeColor=#9aa5b1;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="310" width="160" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="api" value="&lt;div style=&quot;font-size:24px;line-height:1.3;&quot;&gt;&lt;b&gt;服务 / API&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:20px;line-height:1.4;margin-top:12px;&quot;&gt;接收与校验&lt;/div&gt;&lt;div style=&quot;font-size:17px;color:#718091;margin-top:10px;&quot;&gt;Server / API&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#ffe6cc;strokeColor=#d79b00;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="250" y="310" width="180" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="ipc" value="&lt;div style=&quot;font-size:24px;line-height:1.3;&quot;&gt;&lt;b&gt;跨进程送入引擎&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:17px;color:#718091;margin-top:10px;&quot;&gt;IPC / Engine process&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#f5f5f5;strokeColor=#9aa5b1;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="480" y="310" width="210" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="request" value="&lt;div style=&quot;font-size:24px;line-height:1.3;&quot;&gt;&lt;b&gt;内部请求&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:20px;line-height:1.4;margin-top:12px;&quot;&gt;引擎状态表示&lt;/div&gt;&lt;div style=&quot;font-size:17px;color:#718091;margin-top:10px;&quot;&gt;Request&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="740" y="310" width="180" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="waiting" value="&lt;div style=&quot;font-size:24px;line-height:1.3;&quot;&gt;&lt;b&gt;等待准入&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:17px;color:#718091;margin-top:10px;&quot;&gt;WAITING&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="980" y="310" width="160" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="admission" value="&lt;div style=&quot;font-size:24px;line-height:1.3;&quot;&gt;&lt;b&gt;准入&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:20px;line-height:1.4;margin-top:12px;&quot;&gt;检查条件并获得&lt;br&gt;所需 KV 状态&lt;/div&gt;&lt;div style=&quot;font-size:17px;color:#718091;margin-top:10px;&quot;&gt;admission&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="1190" y="310" width="230" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="running" value="&lt;div style=&quot;font-size:24px;line-height:1.3;&quot;&gt;&lt;b&gt;活跃 / 运行中&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:17px;color:#718091;margin-top:10px;&quot;&gt;RUNNING&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="1470" y="310" width="180" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="progress" value="&lt;div style=&quot;font-size:24px;line-height:1.3;&quot;&gt;&lt;b&gt;反复推进&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:20px;line-height:1.4;margin-top:12px;&quot;&gt;推进 prompt / Decode&lt;br&gt;按进度产出 token&lt;/div&gt;&lt;div style=&quot;font-size:17px;color:#718091;margin-top:10px;&quot;&gt;跨多轮迭代&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="1700" y="310" width="290" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="finished" value="&lt;div style=&quot;font-size:24px;line-height:1.3;&quot;&gt;&lt;b&gt;请求结束&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:20px;line-height:1.4;margin-top:12px;&quot;&gt;终止并释放请求资源&lt;/div&gt;&lt;div style=&quot;font-size:17px;color:#718091;margin-top:10px;&quot;&gt;FINISHED&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="2040" y="310" width="220" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-client-api" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#718399;strokeWidth=2;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677c;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="client" target="api">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-api-ipc" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#718399;strokeWidth=2;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677c;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="api" target="ipc">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-ipc-request" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#718399;strokeWidth=2;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677c;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="ipc" target="request">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-request-waiting" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#718399;strokeWidth=2;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677c;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="request" target="waiting">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-waiting-admission" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#718399;strokeWidth=2;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677c;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="waiting" target="admission">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-admission-running" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#718399;strokeWidth=2;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677c;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="admission" target="running">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-running-progress" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#718399;strokeWidth=2;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677c;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="running" target="progress">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-progress-finished" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#718399;strokeWidth=2;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677c;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="progress" target="finished">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="admission-blocked" value="条件不满足：继续等待" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#718399;strokeWidth=2;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677c;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=1;" edge="1" parent="1" source="admission" target="waiting">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1305.0" y="510" />
+              <mxPoint x="1060.0" y="510" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="admission-success" value="准入成功后才进入 RUNNING，并持有所需 KV 状态" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontFamily=Noto Sans CJK SC;fontSize=20;fontColor=#53677c;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="540" width="1150" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="timescale" value="&lt;b&gt;一个请求生命周期通常跨越很多轮引擎迭代&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:21px;color:#657487;&quot;&gt;每轮可推进多个请求；未被选中的请求本轮不推进。&lt;/span&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#f5f5f5;strokeColor=#9aa5b1;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="610" width="2220" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="zoom-progress" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#8b98a6;strokeWidth=2;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677c;labelBackgroundColor=#ffffff;exitX=0.85;exitY=1;entryX=0.85;entryY=0;dashed=1;dashPattern=6 5;" edge="1" parent="1" source="progress" target="timescale">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="lower-title" value="&lt;b&gt;下层 · 引擎每轮迭代循环&lt;/b&gt;" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontFamily=Noto Sans CJK SC;fontSize=27;fontColor=#243448;" vertex="1" parent="1">
+          <mxGeometry x="40" y="730" width="2220" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="constraints" value="&lt;b&gt;每轮调度与准入的共同约束&lt;/b&gt;　｜　当前请求状态　｜　token / 计算预算　｜　KV 容量　｜　调度策略" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#f5f5f5;strokeColor=#9aa5b1;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="790" width="2220" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="schedule" value="&lt;div style=&quot;font-size:24px;line-height:1.3;&quot;&gt;&lt;b&gt;决定本轮推进工作&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:20px;line-height:1.4;margin-top:12px;&quot;&gt;选哪些请求？&lt;br&gt;各推进多少 token？&lt;/div&gt;&lt;div style=&quot;font-size:17px;color:#718091;margin-top:10px;&quot;&gt;schedule&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="930" width="380" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="plan" value="&lt;div style=&quot;font-size:24px;line-height:1.3;&quot;&gt;&lt;b&gt;本轮执行计划&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:20px;line-height:1.4;margin-top:12px;&quot;&gt;控制面 → 执行侧&lt;br&gt;请求、token 配额及 KV 信息&lt;/div&gt;&lt;div style=&quot;font-size:17px;color:#718091;margin-top:10px;&quot;&gt;SchedulerOutput&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="500" y="930" width="380" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="executor" value="&lt;div style=&quot;font-size:24px;line-height:1.3;&quot;&gt;&lt;b&gt;分派执行&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:20px;line-height:1.4;margin-top:12px;&quot;&gt;组织本轮执行任务&lt;/div&gt;&lt;div style=&quot;font-size:17px;color:#718091;margin-top:10px;&quot;&gt;Executor&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="960" y="930" width="380" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="worker" value="&lt;div style=&quot;font-size:24px;line-height:1.3;&quot;&gt;&lt;b&gt;执行工作单元&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:20px;line-height:1.4;margin-top:12px;&quot;&gt;承接并运行执行任务&lt;/div&gt;&lt;div style=&quot;font-size:17px;color:#718091;margin-top:10px;&quot;&gt;Worker(s)&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="1420" y="930" width="380" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="runner" value="&lt;div style=&quot;font-size:24px;line-height:1.3;&quot;&gt;&lt;b&gt;准备模型输入&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:20px;line-height:1.4;margin-top:12px;&quot;&gt;请求级计划 → 模型级 batch&lt;br&gt;张量 / KV-attention 元数据&lt;/div&gt;&lt;div style=&quot;font-size:17px;color:#718091;margin-top:10px;&quot;&gt;ModelRunner / V2 GPUModelRunner&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="1880" y="930" width="380" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-schedule-plan" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#718399;strokeWidth=2;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677c;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="schedule" target="plan">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-plan-executor" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#718399;strokeWidth=2;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677c;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="plan" target="executor">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-executor-worker" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#718399;strokeWidth=2;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677c;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="executor" target="worker">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-worker-runner" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#718399;strokeWidth=2;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677c;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1" source="worker" target="runner">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="runtime" value="&lt;div style=&quot;font-size:24px;line-height:1.3;&quot;&gt;&lt;b&gt;执行运行时&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:20px;line-height:1.4;margin-top:12px;&quot;&gt;使用已准备的执行路径&lt;/div&gt;&lt;div style=&quot;font-size:17px;color:#718091;margin-top:10px;&quot;&gt;execution runtime&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="1880" y="1230" width="380" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="gpu" value="&lt;div style=&quot;font-size:24px;line-height:1.3;&quot;&gt;&lt;b&gt;模型 / GPU 计算&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:20px;line-height:1.4;margin-top:12px;&quot;&gt;执行本轮模型计算&lt;/div&gt;&lt;div style=&quot;font-size:17px;color:#718091;margin-top:10px;&quot;&gt;model / GPU&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#d5e8d4;strokeColor=#82b366;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="1420" y="1230" width="380" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="output" value="&lt;div style=&quot;font-size:24px;line-height:1.3;&quot;&gt;&lt;b&gt;模型输出 / 采样&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:20px;line-height:1.4;margin-top:12px;&quot;&gt;处理模型结果&lt;br&gt;需要时生成输出 token&lt;/div&gt;&lt;div style=&quot;font-size:17px;color:#718091;margin-top:10px;&quot;&gt;model output / sampling&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#e1d5e7;strokeColor=#9673a6;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="960" y="1230" width="380" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="update" value="&lt;div style=&quot;font-size:24px;line-height:1.3;&quot;&gt;&lt;b&gt;回写请求进度&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:20px;line-height:1.4;margin-top:12px;&quot;&gt;更新状态 / 完成条件&lt;br&gt;管理 KV 状态与资源释放&lt;/div&gt;&lt;div style=&quot;font-size:17px;color:#718091;margin-top:10px;&quot;&gt;scheduler.update_from_output()&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="500" y="1230" width="380" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="next" value="&lt;div style=&quot;font-size:24px;line-height:1.3;&quot;&gt;&lt;b&gt;进入下一轮&lt;/b&gt;&lt;/div&gt;&lt;div style=&quot;font-size:20px;line-height:1.4;margin-top:12px;&quot;&gt;根据更新后的状态&lt;br&gt;再次决定如何推进&lt;/div&gt;&lt;div style=&quot;font-size:17px;color:#718091;margin-top:10px;&quot;&gt;next iteration&lt;/div&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#dae8fc;strokeColor=#6c8ebf;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1230" width="380" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-runtime-gpu" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#718399;strokeWidth=2;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677c;labelBackgroundColor=#ffffff;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="runtime" target="gpu">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-gpu-output" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#718399;strokeWidth=2;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677c;labelBackgroundColor=#ffffff;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="gpu" target="output">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-output-update" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#718399;strokeWidth=2;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677c;labelBackgroundColor=#ffffff;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="output" target="update">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-update-next" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#718399;strokeWidth=2;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677c;labelBackgroundColor=#ffffff;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1" source="update" target="next">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="constraints-schedule" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#718399;strokeWidth=2;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677c;labelBackgroundColor=#ffffff;exitX=0.085;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="constraints" target="schedule">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="runner-runtime" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#718399;strokeWidth=2;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677c;labelBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="runner" target="runtime">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="next-schedule" value="重复" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#718399;strokeWidth=2;endArrow=block;endFill=1;fontFamily=Noto Sans CJK SC;fontSize=18;fontColor=#53677c;labelBackgroundColor=#ffffff;exitX=0.5;exitY=0;entryX=0.5;entryY=1;" edge="1" parent="1" source="next" target="schedule">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="loop-note" value="&lt;b&gt;执行结果持续回写调度状态，下一轮基于新状态重新决策&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:20px;color:#657487;&quot;&gt;调度组织本轮工作；执行侧把计划转成实际模型计算。&lt;/span&gt;" style="text;html=1;whiteSpace=wrap;align=center;verticalAlign=middle;strokeColor=none;fillColor=none;fontFamily=Noto Sans CJK SC;fontSize=23;fontColor=#243448;" vertex="1" parent="1">
+          <mxGeometry x="500" y="1140" width="1250" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="prefill-note" value="&lt;b&gt;首个输出 token 之前，也可能已经完成多轮迭代&lt;/b&gt;&lt;br&gt;&lt;span style=&quot;font-size:21px;&quot;&gt;长 prompt / 分块 prefill：调度 → 执行 → 更新 → 再调度，先逐步处理输入，再进入持续输出。&lt;/span&gt;" style="rounded=1;arcSize=10;whiteSpace=wrap;html=1;align=center;verticalAlign=middle;spacing=12;fontFamily=Noto Sans CJK SC;fontSize=22;fontColor=#243448;fillColor=#f5f5f5;strokeColor=#9aa5b1;strokeWidth=1.6;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1480" width="2220" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="summary" value="&lt;b&gt;一个请求在反复的服务迭代中被持续推进；&lt;br&gt;调度负责组织工作，执行负责把计划转化为模型 / GPU 上的实际计算。&lt;/b&gt;" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontFamily=Noto Sans CJK SC;fontSize=28;fontColor=#243448;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1620" width="2220" height="80" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
