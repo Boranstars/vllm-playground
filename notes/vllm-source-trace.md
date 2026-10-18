@@ -814,3 +814,150 @@ self.reset_preempted_req_ids = set()
 自己已判断出：`.clear()` 会清空输出仍引用的旧集合；`= set()` 只让 Scheduler 换用新的集合，输出继续保留本轮要交给外部的 ID。
 
 TODO：Executor / Worker / ModelRunner 消费链留到 CP7；speculative、multimodal、connector、structured output、runner 差异、deferred block free 和结果返回后的进度修正不在 CP6 展开。当前已区分请求状态、调度账面进度、本轮执行计划与实际执行完成状态。
+
+# checkpoint7
+
+## 阅读指导
+
+**① 从 Scheduler 返回，到 Worker**
+
+| 文件 | 类 / 函数 | 建议阅读范围 | 下一跳调用 | 节点角色 |
+|---|---|---|---|---|
+| [v1/engine/core.py](/home/boran/PycharmProjects/vllm-playground/.venv/lib/python3.12/site-packages/vllm/v1/engine/core.py) | `EngineCore.step()`；`step_with_batch_queue()` | 搜索 `scheduler_output = self.scheduler.schedule(...)`，只对照紧邻的执行提交 | `self.model_executor.execute_model(...)` | 定位接收返回值的调用方，以及返回后第一次向执行侧传递的位置 |
+| [v1/executor/uniproc_executor.py](/home/boran/PycharmProjects/vllm-playground/.venv/lib/python3.12/site-packages/vllm/v1/executor/uniproc_executor.py) | `UniProcExecutor.execute_model()` | 只读 `self.collective_rpc(...)` 的方法名和参数 | `self.collective_rpc("execute_model", ...)` | 单 GPU executor 的执行入口 |
+| 同上 | `UniProcExecutor.collective_rpc()` | 搜索 `run_method(self.driver_worker, ...)`，不展开 Future 处理 | `run_method(self.driver_worker, ...)` | 定位 executor 如何调用 worker 方法 |
+| [v1/serial_utils.py](/home/boran/PycharmProjects/vllm-playground/.venv/lib/python3.12/site-packages/vllm/v1/serial_utils.py)；[v1/worker/worker_base.py](/home/boran/PycharmProjects/vllm-playground/.venv/lib/python3.12/site-packages/vllm/v1/worker/worker_base.py) | `run_method()`；`WorkerWrapperBase.execute_model()` | 前者只看字符串分支的 `getattr()` 和末尾调用；后者只看显式定义的短方法 | `self.worker.execute_model(...)` | 补上方法查找与 wrapper 到真实 Worker 的转发；此处不经过 `__getattr__()` |
+| [v1/worker/gpu_worker.py](/home/boran/PycharmProjects/vllm-playground/.venv/lib/python3.12/site-packages/vllm/v1/worker/gpu_worker.py) | `Worker.execute_model()` | 看入口参数，再搜索 `self.model_runner.execute_model(...)` | `self.model_runner.execute_model(...)` | 定位 Worker 到 ModelRunner 的交接 |
+
+这里先不读 Future、采样、输出返回及通信分支。
+
+**② ModelRunner 接收和整理输入**
+
+以下均在 [v1/worker/gpu/model_runner.py](/home/boran/PycharmProjects/vllm-playground/.venv/lib/python3.12/site-packages/vllm/v1/worker/gpu/model_runner.py)，类为 V2 **`GPUModelRunner`**。
+
+| 函数 | 建议阅读范围 | 下一跳调用 | 节点角色 |
+|---|---|---|---|
+| `execute_model()` | 搜索 `# Update the request states.`，看到 `self.block_tables.apply_staged_writes()` | `finish_requests()`、`free_states()`、`add_requests()`、`update_requests()` | 定位开始应用 SchedulerOutput 中请求状态的位置；这次先不进入这些函数 |
+| `execute_model()` | 分别搜索 `self.gather_batch_req_state(...)` 和 `self.prepare_inputs(...)`，只读调用参数 | `gather_batch_req_state(...)` → `prepare_inputs(...)` | 定位从调度计划进入 batch 与模型输入准备的调用点 |
+| `gather_batch_req_state()` | 从入口到 `has_prefill = ...`，跳过 dummy / speculative 等分支 | 返回 batch 状态，回到 `execute_model()` | 观察 request ID、本轮 token 数与执行侧状态索引如何进入 batch |
+| `prepare_inputs()` | 看入口的 request / token 映射，跳到 `# Get query_start_loc.`、`# Get prefill tokens if any.`、`# Prepare positions and seq_lens.`，再看返回的 `InputBatch` 字段 | 返回 `InputBatch` | 定位 token、位置和 batch 边界等输入的整理位置；辅助函数只认名字 |
+| `execute_model()` | 搜索 `model_inputs = {`，只读该字典及构造参数 | 后面的模型执行区域 | 定位最终模型调用参数的组装 |
+
+`prepare_attn(...)` 只记接口名字，不进入 attention backend；输入准备中的底层函数也不继续追。
+
+**③ 模型执行边界：只放书签**
+
+仍在 `GPUModelRunner.execute_model()`：
+
+- 搜索 `# Run model.`，作为执行区域入口。
+- 只看 `model_output = self.model(**model_inputs)`，作为直接模型调用的边界。
+- 同一区域遇到 `run_fullgraph(...)`、`run_pw_graph(...)`、`ubatch_runner.run(...)`，只记录为 runtime 入口 TODO，不进入；microbatch 路径是条件启用，不视为 baseline 必经步骤。
+
+`torch.compile`、CUDA Graph、attention backend、GEMM、custom kernel、CUDA Runtime 和 distributed execution 均按 STOP RULE 停止。
+
+## 探索中的问题与结论
+
+本次沿 installed vLLM 0.31.0 的单 GPU、普通文本路径，从 `SchedulerOutput` 追到模型执行边界。对应 upstream 文件与 installed source 一致；实际实验日志记录使用 V2 Model Runner。目标是补齐层与层之间的职责和对象连接，不深入 execution runtime。
+
+### 1. CP7 串起了哪些系统层次？
+
+| 层次 / 接口 | 本次确认的职责 |
+|---|---|
+| Scheduler | 决定本轮哪些请求执行、各推进多少 token |
+| SchedulerOutput | 传递本轮 execution plan 与 state synchronization |
+| Executor | 组织执行资源，将计划派发给 Worker；当前 baseline 是 UniProcExecutor |
+| GPU Worker | 设备侧执行入口，承接外围编排并调用所选 ModelRunner |
+| V2 GPUModelRunner | 同步执行侧请求状态，组织 batch、准备输入及必要 metadata，将 serving-level 计划整理成 model-level 输入 |
+| Execution runtime boundary | 定位直接模型调用、CUDA Graph 和条件 microbatch 执行入口，在接口处停止 |
+
+**SchedulerOutput → Executor → Worker → ModelRunner → Model Execution Boundary**（点击图片查看 SVG）
+
+[![CP7：从调度计划到模型执行边界的系统分层](diagrams/vllm-cp7-execution-layers.png)](diagrams/vllm-cp7-execution-layers.svg)
+
+Scheduler 决定“谁做多少”，Executor 负责“怎样组织执行资源落实计划”；ModelRunner 则跨越 serving / request abstraction 与 batch / tensor / model execution abstraction。图中的运行时入口是替代或条件路径，不是依次经过的阶段。底部简化闭环为 schedule → execute → model output / sampling → `scheduler.update_from_output()` → next iteration；本次只记录闭环位置，没有继续分析采样和状态回写内部。
+
+### 2. 为什么只看 UniProcExecutor？其他 executor 是什么？
+
+一直使用的 baseline 是单 GPU、TP=1、PP=1、DP=1，未显式指定其他后端时选择 `uni`。UniProc 在当前 EngineCore 进程内调用一个 Worker，不表示整个 vLLM 服务只有一个进程；API server 与 EngineCore 仍可分进程。
+
+| 后端 | Executor | 此处只记录用途 |
+|---|---|---|
+| `uni` | `UniProcExecutor` | 本次单 GPU 路径 |
+| `mp` | `MultiprocExecutor` | 使用多个本地进程组织 Workers |
+| `ray` | `RayDistributedExecutor` | 使用 Ray 管理 Workers |
+| `external_launcher` | `ExecutorWithExternalLauncher` | 由外部启动器启动进程 |
+
+其他后端留作 distributed execution TODO，不沿实现继续追踪。
+
+### 3. 为什么出现 collective_rpc？run_method 不只是封装调用吗？
+
+这里的 `collective_rpc` 是统一的 Worker 调用接口名。UniProc 实现通过本进程内的 `run_method()` 调用，不因名字带 RPC 就必然跨进程或网络通信。
+
+自己已经指出 `run_method()` 只是执行方法的通用封装。当前路径只需确认传入对象、方法名与参数：`self.driver_worker`、`"execute_model"`、`(scheduler_output,)`。字符串分支的原始代码核心是：
+
+```python
+func = getattr(obj, method)
+```
+
+```python
+return func(*args, **kwargs)
+```
+
+`driver_worker` 是对象，查找到的绑定方法 `func` 才是本次调用的 callable。不需要从这个封装继续研究执行机制。
+
+### 4. 怎么知道 driver_worker 是 wrapper，又怎么知道 self.worker 是 GPU Worker？
+
+本轮反复追问的是跳转依据：不能只凭变量名或导航者结论确定下一份文件，必须追踪对象的创建与配置选择。
+
+在 `UniProcExecutor._init_executor()` 中：
+
+```python
+self.driver_worker = WorkerWrapperBase(rpc_rank=0)
+```
+
+因此 `run_method()` 首先在 `WorkerWrapperBase` 实例上查找方法。自己找到了 wrapper 显式定义的 `execute_model()`：
+
+```python
+def execute_model(
+    self, scheduler_output: SchedulerOutput
+) -> ModelRunnerOutput | AsyncModelRunnerOutput | None:
+    self._apply_mm_cache(scheduler_output)
+
+    return self.worker.execute_model(scheduler_output)
+```
+
+本次纯文本路径略过 MM cache 处理。这里已有显式方法，所以修正最初的导航：这次转发不经过 `WorkerWrapperBase.__getattr__()`。
+
+真实 Worker 的类型还需继续追：`WorkerWrapperBase.init_worker()` 从 `parallel_config.worker_cls` 解析类，再执行 `self.worker = worker_class(**kwargs)`。在 [platforms/cuda.py](/home/boran/PycharmProjects/vllm-playground/.venv/lib/python3.12/site-packages/vllm/platforms/cuda.py) 的 `CudaPlatform.check_and_update_config()` 中，默认配置被指定为：
+
+```python
+if parallel_config.worker_cls == "auto":
+    parallel_config.worker_cls = "vllm.v1.worker.gpu_worker.Worker"
+```
+
+这才接到 [v1/worker/gpu_worker.py](/home/boran/PycharmProjects/vllm-playground/.venv/lib/python3.12/site-packages/vllm/v1/worker/gpu_worker.py) 的 `Worker.execute_model()`。先确认创建 / 赋值依据，再跳实现，是这次形成的源码导航方法。
+
+### 5. 为什么看到 _model_forward() 后，需要先核对 V1 / V2 runner？
+
+阅读中到达过 `self._model_forward(...)`，该段位于 V1 的 `v1/worker/gpu_model_runner.py`。当前 [实验日志](../results/kv-pressure/formal-20261013/server.log) 记录 `Using V2 Model Runner`，所以本次主路径应是 `v1/worker/gpu/model_runner.py`。
+
+依据在 `gpu_worker.py` 的 ModelRunner 创建分支：`use_v2_model_runner` 为真时导入 `vllm.v1.worker.gpu.model_runner.GPUModelRunner`；另一路才导入 `vllm.v1.worker.gpu_model_runner.GPUModelRunner`。两边类名都叫 `GPUModelRunner`，不能只凭类名把调用链拼接在一起。
+
+### 6. ModelRunner 在哪里跨越 serving 与模型执行的抽象边界？
+
+V2 `GPUModelRunner.execute_model()` 先调用请求状态同步函数，再通过 `gather_batch_req_state()` 组织本轮请求、token 数和执行侧索引；`prepare_inputs()` 整理 batch 所需 token、位置和边界等信息，随后组装 `model_inputs`。Attention / KV metadata 只记录准备接口，不展开 backend。
+
+本次核心认识是：ModelRunner 将 request ID、本轮 token 数、KV / 请求状态这些 serving 信息，整理成 batch / tensor / model execution inputs；它的职责不只是把 `SchedulerOutput` 原样传给模型。
+
+### 7. Week 1 在哪里停止？
+
+在 V2 `execute_model()` 的 `# Run model.` 区域，保留以下边界书签：
+
+| 入口 | 本次处理方式 |
+|---|---|
+| `self.model(**model_inputs)` | 直接模型调用边界 |
+| `self.cudagraph_manager.run_fullgraph(batch_desc)` | FULL CUDA Graph 入口，只记名字 |
+| `self.cudagraph_manager.run_pw_graph(self.model, model_inputs)` | PIECEWISE 入口，只记名字 |
+| `self.ubatch_runner.run(...)` | 条件 microbatch 执行入口，只记名字；不是本次 baseline 必经路径 |
+
+TODO：torch.compile、CUDA Graph 内部、attention backend / FlashAttention、GEMM、custom kernel、CUDA Runtime、distributed execution，以及采样和结果回写内部。Week 1 在模型执行边界停止，不把执行入口调用视为 GPU 已完成。
