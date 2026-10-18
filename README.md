@@ -12,43 +12,46 @@
 
 ## Week 1
 
-路线：**experiments → mechanism → source validation → abstraction**。
+路线：**baseline behavior → serving trade-off → mechanism experiments → production source validation → framework-independent abstraction**。
 
 实际做了 prompt length、output length、concurrency、Prefill–Decode interference、
 token budget / Chunked Prefill，以及 KV pressure / admission / preemption 六组探索。
 从客户端延迟和输出事件、服务端 Running / Waiting 与 KV 指标入手，逐步追问背后的调度和资源机制。
 最后沿实际使用的单 GPU、V2 ModelRunner 路径阅读源码，并补齐 startup 与 steady-state lifecycle。
 
-### What I observed
+### 1. Baseline behavior
 
-#### 1. Prompt length：输入变长，TTFT 明显增加
+先用 Prompt / Output length 建立 TTFT / TPOT / E2E 与 Prefill / Decode 的基础直觉：
 
-实际 prompt 中位数从约 **77 → 2229 tokens**，TTFT 中位数从 **11.8 → 120.4 ms**。
-更长的输入增加 Prefill 工作；Decode 也有所变慢，但本次 TTFT 对输入长度更敏感。
-来源：[Prompt length](notes/week1-experiments.md#prompt-length)，run `20261006-222435`。
+- **Prompt length**：输入中位数约 **77 → 2229 tokens**，TTFT 中位数 **11.8 → 120.4 ms**；Prefill 工作增加，Decode 也有所变慢，但 TTFT 更敏感。[记录](notes/week1-experiments.md#prompt-length)：`20261006-222435`。
+- **Output length**：固定约 577-token 输入，输出 **16 → 512 tokens** 时 E2E 近似线性增长；TTFT 中位数 **32.5–34.7 ms**、TPOT 约 **6.3–6.6 ms/token**，未见 TPOT 随输出长度强单调增加。[记录](notes/week1-experiments.md#output-length)：`20261006-225619`。
+
+<details>
+<summary>Baseline 对照图：Prompt / Output length</summary>
 
 ![Prompt length 与 TTFT：原始样本及组中位数](notes/pics/prompt-length-vs-ttft.png)
 
-#### 2. Output length：更多输出主要增加 Decode 步数与 E2E
-
-固定约 577-token 输入，输出上限从 **16 → 512 tokens**，E2E 近似线性增长。
-TTFT 中位数保持在 **32.5–34.7 ms**；TPOT 约 **6.3–6.6 ms/token**，未观察到随输出长度强单调增加。
-来源：[Output length](notes/week1-experiments.md#output-length)，run `20261006-225619`。
-
 ![Output length 与 E2E：原始样本及组中位数](notes/pics/output-length-vs-e2e.png)
 
-#### 3. Concurrency：aggregate throughput 提高，individual latency 恶化
+</details>
+
+### 2. Serving under concurrency
 
 正式并发实验中，C=1 → 32，generation throughput 从 **158.7 → 1415.2 tokens/s**；
-同时 E2E p50 从 **0.797 → 2.884 s**，TPOT p50 从 **6.02 → 20.49 ms/token**。
-系统处理的总工作量增加，单个请求的推进却变慢了。
+同时 TTFT p50 从 **33.2 → 277.4 ms**，TPOT p50 从 **6.02 → 20.49 ms/token**，E2E p50 从 **0.797 → 2.884 s**。
+这里的 serving trade-off 是：**aggregate throughput ↑，individual TTFT / TPOT / E2E 恶化**。
 来源：[Concurrency 正式记录](notes/week1-experiments.md#concurrency)，run `20261010-231439-7f9be14b`。
 
 ![并发增加时的 aggregate generation throughput](notes/pics/concurrency-vs-generation-throughput.png)
 
 ![并发增加时的单请求 TPOT](notes/pics/concurrency-vs-tpot.png)
 
-#### 4. Prefill–Decode interference：新 Prefill 会打断背景输出节奏
+### 3. From behavior to mechanisms
+
+接下来从“性能如何变化”转向“工作怎样竞争、怎样被分轮安排，以及状态空间不足时会发生什么”。
+三个机制实验依次考察 mixed workload 干扰、per-iteration compute budget，以及跨轮持续占用的 KV capacity。
+
+#### Prefill–Decode interference：新 Prefill 会打断背景输出节奏
 
 八个请求已在 Decode 时注入 Short / Long prompt，stall ratio 中位数分别为 **3.834 / 12.576**，
 无注入 Baseline 为 **1.297**。干扰集中在注入附近，随后输出间隔恢复到通常的短间隔。
@@ -57,10 +60,11 @@ TTFT 中位数保持在 **32.5–34.7 ms**；TPOT 约 **6.3–6.6 ms/token**，�
 ![Prefill–Decode 干扰的完整事件时间线：Baseline、Short、Long 各十次 trial、每次八条背景流](notes/pics/prefill-interference-full-interval-timeline.png)
 
 时间线保留正常输出节奏、注入附近的长间隔与后续恢复；颜色和线段长度表示客户端事件间隔。
+这把问题带到 Prefill / Decode 的工作量竞争：它们如何共享每轮预算，继续由下面的实验与源码核对。
 
-#### 5. Token budget / Chunked Prefill：更少、更重的 decode stall
+#### Token budget / Chunked Prefill：每轮预算改变 stall 形态
 
-在已有八个请求 Decode 时注入 long prompt，budget 从 1024 → 4096，
+接着比较不同的 per-iteration token budget：在已有八个请求 Decode 时注入 long prompt，budget 从 1024 → 4096，
 long prefill 的 TTFT 中位数从 **217.224 → 199.408 ms**；
 背景输出的超阈值间隔数从 **3 → 1**，峰值间隔的汇总中位数从 **72.287 → 181.705 ms**。
 这次观察到的是更少、更重的 decode stall，没有得到通用最优 budget。
@@ -71,9 +75,9 @@ long prefill 的 TTFT 中位数从 **217.224 → 199.408 ms**；
 
 ![Token budget 与 Long Prefill TTFT：与背景 stall 形态变化一起看待前台延迟的取舍](notes/pics/token-budget-foreground-ttft.png)
 
-#### 6. KV pressure：分别观察 admission blocking 与 preemption
+#### KV pressure：persistent capacity 不足时的 admission blocking / preemption
 
-Compute/token budget 限制本轮安排多少工作，KV capacity 限制请求状态能否容纳、能否继续增长。
+Compute/token budget 每轮重置，限制本轮安排多少工作；KV capacity 承载跨轮保留的请求状态，限制它们能否容纳、能否继续增长。
 Admission 实验中，前台需要 **194 blocks**、触发时仅余 **168 blocks**：先注入会等待，释放 holder 后继续推进；反转顺序后无持续等待。
 Growth 实验让已接纳请求的 Decode context 增长，三次压力试验均在采样 KV 使用率 **99.74–99.78%** 附近观察到一次 preemption，对照组没有抢占。
 来源：[KV pressure 正式记录](notes/week1-experiments.md#kv-pressure--admission--preemption)与[实验协议](notes/kv-pressure-experiment.md)，run `formal-20261013`。
@@ -85,9 +89,13 @@ Growth 实验让已接纳请求的 Decode context 增长，三次压力试验均
 放大图展示 Pair 1 / trial 7：KV **99.740% → 91.905%**、preemption **0 → 1**、Running **12 → 11**、Waiting **0 → 1**。
 虚线是首次指标观测时刻；[三组 growth 对照](notes/pics/kv-pressure-growth-comparison.png)展示重复性，[反转注入顺序的 admission 对照](notes/pics/kv-pressure-release-then-inject.png)补充资源释放证据。
 
-实验之后，[CP1–CP7 production source trace](notes/vllm-source-trace.md) 用来校准 mental models：
-区分入队与 admission、调度计划与实际执行，确认谁管理资源、谁决定工作、谁把计划变成模型输入。
-最终保留的是 responsibilities / boundaries 与反馈循环，类名只是当前实现的定位线索。
+### From experiments to system model
+
+[CP1–CP7 production source trace](notes/vllm-source-trace.md) 用来校准实验形成的 mental model，并不以“学完 vLLM 源码”为目标。
+沿实际 baseline 核对 request lifecycle、resource management、scheduling、execution plan，以及 ModelRunner / execution boundary，区分入队与 admission、调度计划与实际执行。
+
+这些职责边界最终整理成三张收尾图：startup 建立状态与容量，steady-state 通过迭代推进请求，再抽象成顶部的框架无关系统图。
+它们的 PNG 与可编辑 draw.io 文件见下面的 Artifacts；可迁移的是 responsibilities / boundaries 与反馈循环。
 
 这些结论来自 single GPU、small model 和有限轮次的 educational exploration。
 它们用于理解当前 workload 的系统行为，不作为硬件 benchmark 或通用性能结论；测量定义与局限见完整记录。
@@ -115,6 +123,6 @@ Raw results（CSV、事件 JSONL、server logs 等）主要保存在本地、被
 
 ## Where this leads
 
-Week 1 主要回答：现代 inference system 如何组织 work。
-Week 2 将沿已经定位的模型执行边界，下沉到 execution runtime / operators / kernels / GPU，
-观察这些 work 如何被高效执行。
+Week 1 主要建立 AI Infra / inference serving 的基础地图，并重点体验了 serving/control-plane 一侧如何组织 work。
+Week 2 将以 GPU kernel / performance hands-on 为主要实践，在 model → operator → kernel → GPU 的执行链中理解这些 work 如何真正落到硬件上。
+自然出现的 runtime / compiler 问题作为后续候选记录。
