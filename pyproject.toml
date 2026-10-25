@@ -6,3 +6,9 @@ dependencies = [
     "matplotlib>=3.11.2",
     "vllm==0.31.0",
 ]
+
+[dependency-groups]
+dev = [
+    "notebook>=7.6.3",
+    "pandas>=3.0.6",
+]
