@@ -3,6 +3,7 @@ name = "vllm-playground"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+    "httpx[socks]>=0.28.1",
     "matplotlib>=3.11.2",
     "vllm==0.31.0",
 ]
