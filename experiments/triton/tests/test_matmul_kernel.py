@@ -1,10 +1,11 @@
 import pytest
 import torch
 
-from experiments.triton.kernel.matmul_kernel import matmul
+from experiments.triton.kernel.matmul_kernel import matmul_v0, matmul_v1
 
 
-def test_matmul_basic():
+@pytest.mark.parametrize("matmul_impl", [matmul_v0, matmul_v1], ids=["v0", "v1"])
+def test_matmul_basic(matmul_impl):
 
     M = 256
     K = 128
@@ -13,7 +14,10 @@ def test_matmul_basic():
     a = torch.randn((M, K), device="cuda", dtype=torch.float16)
     b = torch.randn((K, N), device="cuda", dtype=torch.float16)
 
-    actual = matmul(a, b, blocks=(16, 16, 16))
+    blocks = (16, 16, 16)
+    if matmul_impl is matmul_v1:
+        blocks = blocks + (4,)
+    actual = matmul_impl(a, b, blocks=blocks)
     expected = a @ b
 
     torch.testing.assert_close(
@@ -23,6 +27,7 @@ def test_matmul_basic():
         rtol=0,
     )
 
+@pytest.mark.parametrize("matmul_impl", [matmul_v0, matmul_v1], ids=["v0", "v1"])
 @pytest.mark.parametrize(
     "M,K,N,blocks",
     [
@@ -41,48 +46,17 @@ def test_matmul_basic():
 
     ],
 )
-def test_matmul(M, K, N, blocks):
+def test_matmul(M, K, N, blocks, matmul_impl):
 
     a = torch.randn((M, K), device="cuda", dtype=torch.float16)
     b = torch.randn((K, N), device="cuda", dtype=torch.float16)
 
-    actual = matmul(a, b, blocks=blocks)
+    if matmul_impl is matmul_v1:
+        blocks = blocks + (4,)
+    actual = matmul_impl(a, b, blocks=blocks)
     expected = a @ b
 
-    ref32 = a.float() @ b.float()
 
-    err_triton = (actual.float() - ref32).abs()
-    err_torch = (expected.float() - ref32).abs()
-
-    print("Triton vs FP32 ref:")
-    print("max:", err_triton.max().item())
-    print("mean:", err_triton.mean().item())
-
-    print("Torch vs FP32 ref:")
-    print("max:", err_torch.max().item())
-    print("mean:", err_torch.mean().item())
-
-    diff = (actual.float() - expected.float()).abs()
-
-    idx = torch.nonzero(diff > 1e-2)
-
-    print(idx)
-
-    for i, j in idx:
-        print(
-            "index:",
-            (i.item(), j.item()),
-            "triton:",
-            actual[i, j].item(),
-            "torch:",
-            expected[i, j].item(),
-            "fp32:",
-            ref32[i, j].item(),
-            "triton_err:",
-            (actual[i, j].float() - ref32[i, j]).abs().item(),
-            "torch_err:",
-            (expected[i, j].float() - ref32[i, j]).abs().item(),
-        )
 
     torch.testing.assert_close(
         actual,
@@ -90,3 +64,17 @@ def test_matmul(M, K, N, blocks):
         atol=1e-2,
         rtol=1e-3,
     )# fp16下相邻数间隔为2^-10,也就是 9.77e-4,所以1e-3相对误差是一个比较宽松的误差范围，允许1相对ULP
+
+
+def test_matmul_v1_incomplete_group():
+    M, K, N = 130, 128, 256
+    blocks = (16, 16, 16)
+    GROUP_M = 4
+    # ceil(M / BLOCK_M) = 9，M 方向按 4 + 4 + 1 分组。
+    a = torch.randn((M, K), device="cuda", dtype=torch.float16)
+    b = torch.randn((K, N), device="cuda", dtype=torch.float16)
+
+    actual = matmul_v1(a, b, blocks=blocks + (GROUP_M,))
+    expected = a @ b
+
+    torch.testing.assert_close(actual, expected, atol=1e-2, rtol=1e-3)
