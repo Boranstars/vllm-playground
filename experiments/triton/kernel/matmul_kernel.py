@@ -1,3 +1,5 @@
+import statistics
+
 import torch
 import triton
 import triton.language as tl
@@ -189,6 +191,76 @@ def matmul_v1(a: torch.Tensor, b: torch.Tensor, blocks: tuple[int, ...]) -> torc
     return c
 
 
+def do_benchmark():
+
+    for size in [1024, 2048, 4096]:
+        M = N = K = size
+
+        a = torch.randn((M, K), device="cuda", dtype=torch.float16)
+        b = torch.randn((K, N), device="cuda", dtype=torch.float16)
+
+        bench_fns = {
+            "v0": lambda: matmul_v0(a, b, blocks=(64, 64, 32)),
+            "v1": lambda: matmul_v1(a, b, blocks=(64, 64, 32, 4)),
+        }
+
+        p50_samples = {"v0": [], "v1": []}
+
+        # 交替测量顺序
+        for round_idx in range(4):
+            order = (
+                ["v0", "v1"]
+                if round_idx % 2 == 0
+                else ["v1", "v0"]
+            )
+
+            results = {}
+
+            for name in order:
+                q = triton.testing.do_bench(
+                    bench_fns[name],
+                    warmup=100,
+                    rep=500,
+                    quantiles=[0.2, 0.5, 0.8],
+                )
+
+                results[name] = q
+                p50_samples[name].append(q[1])
+
+            v0_p50 = results["v0"][1]
+            v1_p50 = results["v1"][1]
+            improvement = (v0_p50 - v1_p50) / v0_p50 * 100
+
+            print(
+                f"Size={size}³, Round={round_idx + 1}, "
+                f"Order={order}, "
+                f"v0 P50={v0_p50:.3f} ms, "
+                f"v1 P50={v1_p50:.3f} ms, "
+                f"Improvement={improvement:+.2f}%"
+            )
+
+        # 汇总四轮各自的 P50，再取中位数
+        v0_median = statistics.median(p50_samples["v0"])
+        v1_median = statistics.median(p50_samples["v1"])
+        improvement = (v0_median - v1_median) / v0_median * 100
+
+        # Torch 作为参考基线
+        torch_q = triton.testing.do_bench(
+            lambda: a @ b,
+            warmup=100,
+            rep=500,
+            quantiles=[0.2, 0.5, 0.8],
+        )
+
+        print(
+            f"SUMMARY Size={size}³ | "
+            f"v0 median-of-P50={v0_median:.3f} ms | "
+            f"v1 median-of-P50={v1_median:.3f} ms | "
+            f"Improvement={improvement:+.2f}% | "
+            f"Torch P50={torch_q[1]:.3f} ms"
+        )
+
+
 if __name__ == '__main__':
 
     M: int = 256
@@ -200,17 +272,11 @@ if __name__ == '__main__':
     a = torch.randn((M, K), device='cuda', dtype=torch.float16)
     b = torch.randn((K, N), device='cuda', dtype=torch.float16)
 
-    # a = torch.eye(16, device="cuda", dtype=torch.float16)
-    # b = torch.arange(16 * 16, device="cuda", dtype=torch.float16).reshape(16, 16)
-
-    # print(f"{a}\n,{a.shape}\n")
-    # print(f"{b}\n,{b.shape}\n")
 
     c_0 = matmul_v0(a, b, blocks=blocks)
     c_1 = matmul_v1(a, b, blocks=blocks + (group,))
     c_torch: torch.Tensor = a @ b
-    # print(f"{c}\n,{c.shape}\n")
-    # print(f"{c_torch}\n")
+
 
     try:
         torch.testing.assert_close(c_torch, c_0, atol=1e-2, rtol=1e-3)
@@ -219,3 +285,7 @@ if __name__ == '__main__':
     except AssertionError as e:
         print("Results do not match with PyTorch implementation.")
         print(e)
+
+
+    # benchmark
+    do_benchmark()

@@ -235,4 +235,77 @@ ncu \
 
 这样，普通用户已可以直接使用 NCU 获取 GPU Performance Counters。
 
-> 重启或 NVIDIA 驱动模块重新加载后的权限持久性尚未验证，后续如有变化再补充。
+## 7. 重启后的权限持久化
+
+后续实际发现：**重启后前面的 ACL 权限会消失，普通用户再次执行 NCU 仍然会出现 `ERR_NVGPUCTRPERM`。**
+
+原因也比较直接：
+
+```text
+/dev/nvidia-caps/nvidia-capXXXX
+```
+
+属于 NVIDIA 驱动运行时创建的 device node。
+
+前面的：
+
+```bash
+setfacl -m u:<user>:r /dev/nvidia-caps/nvidia-capXXXX
+```
+
+只修改了当前这个 device node 的 ACL。系统重启、驱动重新加载或者节点重新创建后，新节点仍然按照默认权限创建，因此之前的 ACL 不会自动保留。
+
+另外，`profiler-device` 对应的 minor number 也不应该假定永远是某个固定值，例如本机当前是：
+
+```text
+profiler-device 4324
+```
+
+更合理的持久化方式是：
+
+```text
+开机
+  ↓
+等待 NVIDIA capability 可用
+  ↓
+从 sys-minors 动态查询 profiler-device
+  ↓
+找到对应的 /dev/nvidia-caps/nvidia-capXXXX
+  ↓
+恢复当前用户 ACL
+```
+
+本机最终使用一个 systemd oneshot service，在每次启动后自动完成这一步。
+
+因为不同驱动版本、发行版、用户名以及 capability 状态都可能不同。不如直接让agent来写服务
+
+可以直接交给本地 Agent：
+
+> 当前 Nsight Compute 的 `ERR_NVGPUCTRPERM` 已经确认可以通过给当前用户授予 `profiler-device` capability 的读取权限解决，但是该 ACL 在系统重启或 NVIDIA device node 重新创建后会消失。
+>
+> 请检查当前 NVIDIA Driver 版本、`/proc/driver/nvidia-caps/sys-minors`、`/proc/driver/nvidia/capabilities/profiler-device`、`/dev/nvidia-caps/`、`nvidia-modprobe`、`setfacl` 以及已有 NVIDIA systemd services。
+>
+> 在确认当前机器仍然使用 R610+ `nvidia-capabilities` 机制后，设计一个最小权限的 systemd oneshot service：
+>
+> - 不要写死 `profiler-device` 的 minor number；
+> - 每次运行时动态查询对应的 `nvidia-capXXXX`；
+> - 确保 device node 已经创建；
+> - 只给当前开发用户授予 NCU 所需的读取权限；
+> - 避免后续 NVIDIA 用户态工具覆盖该权限；
+> - 不要向所有普通用户开放 GPU Performance Counters；
+> - 修改前先解释准备创建的脚本和 service，以及每一步的作用；
+> - 完成后检查 service 状态、ACL、`DeviceFileModify`，并使用普通用户运行一次最小 NCU workload 验证。
+
+本机最终验证结果：
+
+```text
+systemd service: active (exited)
+
+profiler-device:
+DeviceFileModify: 0
+
+ACL:
+user:boran:r--
+```
+
+这样就不需要每次重启之后重新手动执行 `setfacl`。
