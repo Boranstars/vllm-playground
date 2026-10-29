@@ -1,10 +1,10 @@
 import pytest
 import torch
 
-from experiments.triton.kernel.matmul_kernel import matmul_v0, matmul_v1
+from experiments.triton.kernel.matmul_kernel import matmul_v0, matmul_v1, matmul_v2
 
 
-@pytest.mark.parametrize("matmul_impl", [matmul_v0, matmul_v1], ids=["v0", "v1"])
+@pytest.mark.parametrize("matmul_impl", [matmul_v0, matmul_v1, matmul_v2], ids=["v0", "v1", "v2"])
 def test_matmul_basic(matmul_impl):
 
     M = 256
@@ -17,7 +17,10 @@ def test_matmul_basic(matmul_impl):
     blocks = (16, 16, 16)
     if matmul_impl is matmul_v1:
         blocks = blocks + (4,)
-    actual = matmul_impl(a, b, blocks=blocks)
+    if matmul_impl is matmul_v2:
+        actual = matmul_impl(a, b)
+    else:
+        actual = matmul_impl(a, b, blocks=blocks)
     expected = a @ b
 
     torch.testing.assert_close(
@@ -27,7 +30,7 @@ def test_matmul_basic(matmul_impl):
         rtol=0,
     )
 
-@pytest.mark.parametrize("matmul_impl", [matmul_v0, matmul_v1], ids=["v0", "v1"])
+@pytest.mark.parametrize("matmul_impl", [matmul_v0, matmul_v1, matmul_v2], ids=["v0", "v1", "v2"])
 @pytest.mark.parametrize(
     "M,K,N,blocks",
     [
@@ -53,7 +56,10 @@ def test_matmul(M, K, N, blocks, matmul_impl):
 
     if matmul_impl is matmul_v1:
         blocks = blocks + (4,)
-    actual = matmul_impl(a, b, blocks=blocks)
+    if matmul_impl is matmul_v2:
+        actual = matmul_impl(a, b)
+    else:
+        actual = matmul_impl(a, b, blocks=blocks)
     expected = a @ b
 
 
