@@ -6,16 +6,26 @@ import time
 
 def measure_streaming_request(client, model, prompt, max_tokens):
     """Measure one streaming chat completion using client-observed timestamps."""
+    measurement = measure_streaming_messages(
+        client, model, [{"role": "user", "content": prompt}], max_tokens,
+    )
+    del measurement["output_text"]
+    return measurement
+
+
+def measure_streaming_messages(client, model, messages, max_tokens, *, temperature=0):
+    """Measure a chat stream and collect its text, including for multimodal input."""
     first_nonempty_content_time = None
     prompt_tokens = None
     completion_tokens = None
     finish_reason = None
+    output_parts = []
 
     request_start = time.perf_counter()
     stream = client.chat.completions.create(
         model=model,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0,
+        messages=messages,
+        temperature=temperature,
         max_tokens=max_tokens,
         stream=True,
         stream_options={"include_usage": True},
@@ -24,8 +34,10 @@ def measure_streaming_request(client, model, prompt, max_tokens):
     for chunk in stream:
         if chunk.choices:
             choice = chunk.choices[0]
-            if choice.delta.content and first_nonempty_content_time is None:
-                first_nonempty_content_time = time.perf_counter()
+            if choice.delta.content:
+                if first_nonempty_content_time is None:
+                    first_nonempty_content_time = time.perf_counter()
+                output_parts.append(choice.delta.content)
             if choice.finish_reason is not None:
                 finish_reason = choice.finish_reason
 
@@ -61,6 +73,7 @@ def measure_streaming_request(client, model, prompt, max_tokens):
         "generation_duration_s": generation_duration_s,
         "tpot_s_per_token": tpot_s_per_token,
         "decode_tokens_per_s": decode_tokens_per_s,
+        "output_text": "".join(output_parts),
     }
 
 
